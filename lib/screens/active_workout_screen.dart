@@ -1,31 +1,170 @@
+import 'dart:async';
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
-import 'package:smart_trainer/theme/app_colors.dart';
-import 'package:smart_trainer/screens/training_screen.dart'; // To reuse painters
 
-class ActiveWorkoutScreen extends StatefulWidget {
+import 'package:smart_trainer/core/ai/models/pose_result.dart';
+import 'package:smart_trainer/core/providers.dart';
+import 'package:smart_trainer/theme/app_colors.dart';
+import 'package:smart_trainer/screens/training_screen.dart';
+import 'package:smart_trainer/widgets/skeleton_painter.dart';
+import 'package:smart_trainer/widgets/pose_feedback_overlay.dart';
+
+import 'package:smart_trainer/core/ai/models/exercise_feedback.dart' show ExerciseType;
+export 'package:smart_trainer/core/ai/models/exercise_feedback.dart'
+    show ExerciseType;
+class ActiveWorkoutScreen extends ConsumerStatefulWidget {
   const ActiveWorkoutScreen({super.key});
 
   @override
-  State<ActiveWorkoutScreen> createState() => _ActiveWorkoutScreenState();
+  ConsumerState<ActiveWorkoutScreen> createState() =>
+      _ActiveWorkoutScreenState();
 }
 
-class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
+class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen>
+    with WidgetsBindingObserver {
+  bool _isInitializing = true;
+  String? _errorMessage;
+
+  // Timer
+  final Stopwatch _stopwatch = Stopwatch();
+  Timer? _uiTimer;
+  String _elapsedTime = '00:00';
+
+  // Inference throttle — avoid queuing up frames while one is processing.
+  bool _isProcessingFrame = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _initializeServices();
+  }
+
+  Future<void> _initializeServices() async {
+    try {
+      final cameraService = ref.read(cameraServiceProvider);
+      final poseDetector = ref.read(poseDetectorProvider);
+
+      // Reset exercise evaluator for a fresh session.
+      ref.read(exerciseEvaluatorProvider).reset();
+
+      // Initialize camera and model in parallel.
+      await Future.wait([
+        cameraService.initialize(),
+        poseDetector.initialize(),
+      ]);
+
+      // Start frame stream → inference pipeline.
+      await cameraService.startImageStream(
+        (image) => _onCameraFrame(image),
+        skipFrames: 2, // Process every 3rd frame.
+      );
+
+      // Start elapsed time timer.
+      _stopwatch.start();
+      _uiTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted) {
+          setState(() {
+            final elapsed = _stopwatch.elapsed;
+            _elapsedTime =
+                '${elapsed.inMinutes.toString().padLeft(2, '0')}:${(elapsed.inSeconds % 60).toString().padLeft(2, '0')}';
+          });
+        }
+      });
+
+      if (mounted) setState(() => _isInitializing = false);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isInitializing = false;
+          _errorMessage = e.toString();
+        });
+      }
+    }
+  }
+
+  void _onCameraFrame(CameraImage image) async {
+    if (_isProcessingFrame) return;
+    _isProcessingFrame = true;
+
+    try {
+      final poseDetector = ref.read(poseDetectorProvider);
+      final result = await poseDetector.processFrame(image);
+
+      if (mounted) {
+        ref.read(poseResultProvider.notifier).state = result;
+      }
+    } catch (_) {
+      // Silently skip bad frames.
+    } finally {
+      _isProcessingFrame = false;
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final cameraService = ref.read(cameraServiceProvider);
+
+    if (state == AppLifecycleState.inactive) {
+      _stopwatch.stop();
+      cameraService.stopImageStream();
+    } else if (state == AppLifecycleState.resumed) {
+      _stopwatch.start();
+      cameraService.startImageStream(
+        (image) => _onCameraFrame(image),
+        skipFrames: 2,
+      );
+    }
+  }
+
+  Future<void> _handleStop() async {
+    _stopwatch.stop();
+    _uiTimer?.cancel();
+
+    final cameraService = ref.read(cameraServiceProvider);
+    await cameraService.stopImageStream();
+
+    if (mounted) context.go('/workout_result');
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _stopwatch.stop();
+    _uiTimer?.cancel();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final poseResult = ref.watch(poseResultProvider);
+    final feedback = ref.watch(exerciseFeedbackProvider);
+    final cameraService = ref.watch(cameraServiceProvider);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Background Grid
+          // 1. Camera Preview / Loading / Error
+          if (_isInitializing)
+            _buildLoadingState()
+          else if (_errorMessage != null)
+            _buildErrorState()
+          else if (cameraService.controller != null &&
+              cameraService.isInitialized)
+            _buildCameraPreview(cameraService.controller!, poseResult),
+
+          // 2. Background Grid (semi-transparent over camera)
           CustomPaint(
             size: Size.infinite,
             painter: GridPainter(),
           ),
 
-          // Corner Brackets Layer
+          // 3. Corner Brackets
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(24.0),
@@ -40,14 +179,14 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
             ),
           ),
 
-          // UI Overlay
+          // 4. UI Overlay
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(24.0),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Top Row
+                  // ── Top Section ──
                   Column(
                     children: [
                       Row(
@@ -58,29 +197,33 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                           Container(
                             margin: const EdgeInsets.only(top: 4, left: 4),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.05),
+                              color: Colors.white.withValues(alpha: 0.05),
                               shape: BoxShape.circle,
                             ),
                             child: IconButton(
-                              icon: const Icon(LucideIcons.x, color: Colors.white, size: 24),
+                              icon: const Icon(LucideIcons.x,
+                                  color: Colors.white, size: 24),
                               onPressed: () => context.go('/dashboard'),
                             ),
                           ),
-                          
+
                           // Heart Rate Indicator
                           Container(
                             margin: const EdgeInsets.only(top: 4, right: 4),
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 10),
                             decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.5),
+                              color: Colors.black.withValues(alpha: 0.5),
                               borderRadius: BorderRadius.circular(24),
                               border: Border.all(
-                                color: AppColors.biometricRed.withOpacity(0.5),
+                                color: AppColors.biometricRed
+                                    .withValues(alpha: 0.5),
                                 width: 1,
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: AppColors.biometricRed.withOpacity(0.3),
+                                  color: AppColors.biometricRed
+                                      .withValues(alpha: 0.3),
                                   blurRadius: 16,
                                   spreadRadius: 2,
                                 ),
@@ -89,11 +232,8 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(
-                                  LucideIcons.heart,
-                                  color: AppColors.biometricRed,
-                                  size: 18,
-                                ),
+                                const Icon(LucideIcons.heart,
+                                    color: AppColors.biometricRed, size: 18),
                                 const SizedBox(width: 8),
                                 const Text(
                                   '68 BPM',
@@ -109,59 +249,32 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                         ],
                       ),
                       const SizedBox(height: 32),
-                      
+
                       // Stats Row (Time, Reps, Accuracy)
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          _buildStatBox('TIME', '00:01', Colors.white),
+                          _buildStatBox('TIME', _elapsedTime, Colors.white),
                           const SizedBox(width: 16),
-                          _buildStatBox('REPS', '0', AppColors.electricBlue),
+                          _buildStatBox('REPS', '${feedback.repCount}',
+                              AppColors.electricBlue),
                           const SizedBox(width: 16),
-                          _buildStatBox('ACCURACY', '0%', AppColors.neonGreen),
+                          _buildStatBox(
+                            'ACCURACY',
+                            feedback.isCorrect ? '✓' : '✗',
+                            feedback.isCorrect
+                                ? AppColors.neonGreen
+                                : AppColors.biometricRed,
+                          ),
                         ],
                       ),
                     ],
                   ),
 
-                  // Center Message
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
-                    decoration: BoxDecoration(
-                      color: Colors.black,
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(
-                        color: AppColors.biometricRed.withOpacity(0.5),
-                        width: 1,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.biometricRed.withOpacity(0.15),
-                          blurRadius: 24,
-                          spreadRadius: 4,
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(LucideIcons.alertCircle, color: AppColors.biometricRed, size: 24),
-                        const SizedBox(width: 12),
-                        const Text(
-                          'Get ready...',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  // ── Center: Feedback Banner ──
+                  PoseFeedbackOverlay(feedback: feedback),
 
-                  // Bottom Content
+                  // ── Bottom Content ──
                   Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -169,10 +282,11 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                       SizedBox(
                         width: 280,
                         child: ElevatedButton(
-                          onPressed: () => context.go('/workout_result'),
+                          onPressed: _handleStop,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.biometricRed,
-                            shadowColor: AppColors.biometricRed.withOpacity(0.5),
+                            shadowColor:
+                                AppColors.biometricRed.withValues(alpha: 0.5),
                             elevation: 16,
                             padding: const EdgeInsets.symmetric(vertical: 20),
                             shape: RoundedRectangleBorder(
@@ -191,42 +305,46 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                       ),
                       const SizedBox(height: 32),
 
-                      // Exercise Pill
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface.withOpacity(0.8),
-                          borderRadius: BorderRadius.circular(32),
-                          border: Border.all(
-                            color: AppColors.electricBlue.withOpacity(0.3),
-                            width: 1,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              LucideIcons.activity,
-                              color: AppColors.electricBlue,
-                              size: 18,
-                            ),
-                            const SizedBox(width: 8),
-                            const Text(
-                              'Squat Exercise',
-                              style: TextStyle(
-                                color: AppColors.electricBlue,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
+                      // Exercise Pill (read-only display)
+                      Consumer(
+                        builder: (context, ref, _) {
+                          final exercise = ref.watch(selectedExerciseProvider);
+                          final label = exercise == ExerciseType.squat
+                              ? 'Squat Exercise'
+                              : 'Push-up Exercise';
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface.withValues(alpha: 0.8),
+                              borderRadius: BorderRadius.circular(32),
+                              border: Border.all(
+                                color: AppColors.electricBlue
+                                    .withValues(alpha: 0.3),
+                                width: 1,
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            const Icon(
-                              LucideIcons.zap,
-                              color: AppColors.neonGreen,
-                              size: 18,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(LucideIcons.activity,
+                                    color: AppColors.electricBlue, size: 18),
+                                const SizedBox(width: 8),
+                                Text(
+                                  label,
+                                  style: const TextStyle(
+                                    color: AppColors.electricBlue,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                const Icon(LucideIcons.zap,
+                                    color: AppColors.neonGreen, size: 18),
+                              ],
                             ),
-                          ],
-                        ),
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -239,14 +357,127 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     );
   }
 
+  // ─────────────────── Camera Preview + Skeleton ───────────────────
+
+  Widget _buildCameraPreview(
+      CameraController controller, PoseResult poseResult) {
+    return ClipRect(
+      child: OverflowBox(
+        alignment: Alignment.center,
+        child: FittedBox(
+          fit: BoxFit.cover,
+          child: SizedBox(
+            width: controller.value.previewSize?.height ?? 1,
+            height: controller.value.previewSize?.width ?? 1,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                CameraPreview(controller),
+                // Skeleton overlay
+                if (poseResult.isNotEmpty)
+                  CustomPaint(
+                    painter: SkeletonPainter(
+                      poseResult: poseResult,
+                      imageSize: Size(
+                        controller.value.previewSize?.height ?? 1,
+                        controller.value.previewSize?.width ?? 1,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ─────────────────── Loading State ───────────────────
+
+  Widget _buildLoadingState() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 48,
+            height: 48,
+            child: CircularProgressIndicator(
+              color: AppColors.electricBlue,
+              strokeWidth: 3,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            'Initializing camera & AI model…',
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 16,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─────────────────── Error State ───────────────────
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(LucideIcons.alertTriangle,
+                color: AppColors.biometricRed, size: 48),
+            const SizedBox(height: 16),
+            const Text(
+              'Failed to initialize',
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _errorMessage ?? 'Unknown error',
+              style: const TextStyle(color: AppColors.textSecondary),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  _isInitializing = true;
+                  _errorMessage = null;
+                });
+                _initializeServices();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.electricBlue,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16)),
+              ),
+              child: const Text('Retry',
+                  style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─────────────────── Stat Box ───────────────────
+
   Widget _buildStatBox(String label, String value, Color valueColor) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.4),
+        color: Colors.black.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Colors.white.withOpacity(0.1),
+          color: Colors.white.withValues(alpha: 0.1),
         ),
       ),
       child: Column(
@@ -254,7 +485,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
           Text(
             label,
             style: TextStyle(
-              color: AppColors.textSecondary.withOpacity(0.8),
+              color: AppColors.textSecondary.withValues(alpha: 0.8),
               fontSize: 10,
               letterSpacing: 1.0,
             ),
@@ -273,3 +504,4 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     );
   }
 }
+

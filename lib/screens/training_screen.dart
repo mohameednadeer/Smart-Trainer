@@ -1,14 +1,97 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:smart_trainer/core/ai/models/exercise_feedback.dart';
+import 'package:smart_trainer/core/providers.dart';
 import 'package:smart_trainer/theme/app_colors.dart';
 
-class TrainingScreen extends StatelessWidget {
+class TrainingScreen extends ConsumerStatefulWidget {
   const TrainingScreen({super.key});
 
   @override
+  ConsumerState<TrainingScreen> createState() => _TrainingScreenState();
+}
+
+class _TrainingScreenState extends ConsumerState<TrainingScreen> {
+  bool _isRequestingPermission = false;
+
+  Future<void> _handleStartWorkout() async {
+    if (_isRequestingPermission) return;
+
+    setState(() => _isRequestingPermission = true);
+
+    try {
+      final status = await Permission.camera.request();
+
+      if (!mounted) return;
+
+      if (status.isGranted) {
+        context.go('/active_workout');
+      } else if (status.isPermanentlyDenied) {
+        _showPermissionDialog();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.surface,
+            content: const Text(
+              'Camera permission is required for pose detection',
+              style: TextStyle(color: Colors.white),
+            ),
+            action: SnackBarAction(
+              label: 'Settings',
+              textColor: AppColors.electricBlue,
+              onPressed: () => openAppSettings(),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isRequestingPermission = false);
+    }
+  }
+
+  void _showPermissionDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: AppColors.electricBlue.withValues(alpha: 0.3)),
+        ),
+        title: const Text(
+          'Camera Access Required',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: const Text(
+          'Smart Trainer needs camera access to analyze your exercise posture in real-time. Please enable it in your device settings.',
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel',
+                style: TextStyle(color: AppColors.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              openAppSettings();
+            },
+            child: const Text('Open Settings',
+                style: TextStyle(color: AppColors.electricBlue)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final selectedExercise = ref.watch(selectedExerciseProvider);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Stack(
@@ -51,29 +134,33 @@ class TrainingScreen extends StatelessWidget {
                       Container(
                         margin: const EdgeInsets.only(top: 4, left: 4),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.05),
+                          color: Colors.white.withValues(alpha: 0.05),
                           shape: BoxShape.circle,
                         ),
                         child: IconButton(
-                          icon: const Icon(LucideIcons.x, color: Colors.white, size: 24),
+                          icon: const Icon(LucideIcons.x,
+                              color: Colors.white, size: 24),
                           onPressed: () => context.go('/dashboard'),
                         ),
                       ),
-                      
+
                       // Heart Rate Indicator
                       Container(
                         margin: const EdgeInsets.only(top: 4, right: 4),
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 10),
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.5),
+                          color: Colors.black.withValues(alpha: 0.5),
                           borderRadius: BorderRadius.circular(24),
                           border: Border.all(
-                            color: AppColors.biometricRed.withOpacity(0.5),
+                            color:
+                                AppColors.biometricRed.withValues(alpha: 0.5),
                             width: 1,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.biometricRed.withOpacity(0.3),
+                              color: AppColors.biometricRed
+                                  .withValues(alpha: 0.3),
                               blurRadius: 16,
                               spreadRadius: 2,
                             ),
@@ -82,11 +169,8 @@ class TrainingScreen extends StatelessWidget {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(
-                              LucideIcons.heart,
-                              color: AppColors.biometricRed,
-                              size: 18,
-                            ),
+                            const Icon(LucideIcons.heart,
+                                color: AppColors.biometricRed, size: 18),
                             const SizedBox(width: 8),
                             const Text(
                               '66 BPM',
@@ -111,12 +195,14 @@ class TrainingScreen extends StatelessWidget {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: AppColors.electricBlue.withOpacity(0.3),
+                            color:
+                                AppColors.electricBlue.withValues(alpha: 0.3),
                             width: 2,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.electricBlue.withOpacity(0.1),
+                              color: AppColors.electricBlue
+                                  .withValues(alpha: 0.1),
                               blurRadius: 32,
                               spreadRadius: 8,
                             ),
@@ -126,7 +212,8 @@ class TrainingScreen extends StatelessWidget {
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: AppColors.electricBlue.withOpacity(0.05),
+                            color:
+                                AppColors.electricBlue.withValues(alpha: 0.05),
                           ),
                           child: const Icon(
                             LucideIcons.camera,
@@ -152,14 +239,19 @@ class TrainingScreen extends StatelessWidget {
                     children: [
                       // Record Button
                       GestureDetector(
-                        onTap: () => context.go('/active_workout'),
-                        child: Container(
+                        onTap: _handleStartWorkout,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: AppColors.electricBlue.withOpacity(0.15),
+                            color: _isRequestingPermission
+                                ? AppColors.electricBlue.withValues(alpha: 0.3)
+                                : AppColors.electricBlue
+                                    .withValues(alpha: 0.15),
                             border: Border.all(
-                              color: AppColors.electricBlue.withOpacity(0.3),
+                              color: AppColors.electricBlue
+                                  .withValues(alpha: 0.3),
                               width: 2,
                             ),
                           ),
@@ -170,61 +262,45 @@ class TrainingScreen extends StatelessWidget {
                               color: AppColors.electricBlue,
                               boxShadow: [
                                 BoxShadow(
-                                  color: AppColors.electricBlue.withOpacity(0.5),
+                                  color: AppColors.electricBlue
+                                      .withValues(alpha: 0.5),
                                   blurRadius: 16,
                                   spreadRadius: 4,
                                 ),
                               ],
                             ),
-                            child: Container(
-                              width: 48,
-                              height: 48,
-                              decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.white,
-                              ),
-                            ),
+                            child: _isRequestingPermission
+                                ? const SizedBox(
+                                    width: 48,
+                                    height: 48,
+                                    child: Padding(
+                                      padding: EdgeInsets.all(12),
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                        strokeWidth: 2.5,
+                                      ),
+                                    ),
+                                  )
+                                : Container(
+                                    width: 48,
+                                    height: 48,
+                                    decoration: const BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.white,
+                                    ),
+                                  ),
                           ),
                         ),
                       ),
                       const SizedBox(height: 32),
 
-                      // Exercise Pill
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface.withOpacity(0.8),
-                          borderRadius: BorderRadius.circular(32),
-                          border: Border.all(
-                            color: AppColors.electricBlue.withOpacity(0.3),
-                            width: 1,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              LucideIcons.activity,
-                              color: AppColors.electricBlue,
-                              size: 18,
-                            ),
-                            const SizedBox(width: 8),
-                            const Text(
-                              'Squat Exercise',
-                              style: TextStyle(
-                                color: AppColors.electricBlue,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            const Icon(
-                              LucideIcons.zap,
-                              color: AppColors.neonGreen,
-                              size: 18,
-                            ),
-                          ],
-                        ),
+                      // Exercise Type Selector
+                      _ExerciseToggle(
+                        selected: selectedExercise,
+                        onChanged: (type) {
+                          ref.read(selectedExerciseProvider.notifier).state =
+                              type;
+                        },
                       ),
                     ],
                   ),
@@ -237,6 +313,95 @@ class TrainingScreen extends StatelessWidget {
     );
   }
 }
+
+// ─────────────────── Exercise Toggle Pill ───────────────────
+
+class _ExerciseToggle extends StatelessWidget {
+  final ExerciseType selected;
+  final ValueChanged<ExerciseType> onChanged;
+
+  const _ExerciseToggle({required this.selected, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: AppColors.surface.withValues(alpha: 0.8),
+        borderRadius: BorderRadius.circular(32),
+        border: Border.all(
+          color: AppColors.electricBlue.withValues(alpha: 0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildOption(
+            ExerciseType.squat,
+            'Squat',
+            LucideIcons.activity,
+          ),
+          _buildOption(
+            ExerciseType.pushUp,
+            'Push-up',
+            LucideIcons.zap,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOption(ExerciseType type, String label, IconData icon) {
+    final isSelected = selected == type;
+
+    return GestureDetector(
+      onTap: () => onChanged(type),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOutCubic,
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.electricBlue.withValues(alpha: 0.15)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(
+            color: isSelected
+                ? AppColors.electricBlue.withValues(alpha: 0.5)
+                : Colors.transparent,
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              color: isSelected
+                  ? AppColors.electricBlue
+                  : AppColors.textSecondary,
+              size: 16,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected
+                    ? AppColors.electricBlue
+                    : AppColors.textSecondary,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────── Painters (unchanged) ───────────────────
 
 class CornerBracketsPainter extends CustomPainter {
   final Color color;
@@ -256,7 +421,6 @@ class CornerBracketsPainter extends CustomPainter {
       ..strokeWidth = strokeWidth
       ..style = PaintingStyle.stroke;
 
-    // Top-Left
     canvas.drawPath(
       Path()
         ..moveTo(0, length)
@@ -264,7 +428,6 @@ class CornerBracketsPainter extends CustomPainter {
         ..lineTo(length, 0),
       paint,
     );
-    // Top-Right
     canvas.drawPath(
       Path()
         ..moveTo(size.width - length, 0)
@@ -272,7 +435,6 @@ class CornerBracketsPainter extends CustomPainter {
         ..lineTo(size.width, length),
       paint,
     );
-    // Bottom-Left
     canvas.drawPath(
       Path()
         ..moveTo(0, size.height - length)
@@ -280,7 +442,6 @@ class CornerBracketsPainter extends CustomPainter {
         ..lineTo(length, size.height),
       paint,
     );
-    // Bottom-Right
     canvas.drawPath(
       Path()
         ..moveTo(size.width, size.height - length)
@@ -298,7 +459,7 @@ class GridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.03) // Very faint grid
+      ..color = Colors.white.withValues(alpha: 0.03)
       ..strokeWidth = 1;
 
     for (double i = 0; i < size.width; i += 40) {

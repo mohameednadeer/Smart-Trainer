@@ -1,71 +1,174 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:smart_trainer/core/ai/angle_calculator.dart';
+import 'package:smart_trainer/core/ai/models/pose_landmark.dart';
+import 'package:smart_trainer/core/ai/models/pose_result.dart';
 import 'package:smart_trainer/theme/app_colors.dart';
 
+/// Paints the MoveNet skeleton overlay on top of the camera preview.
+///
+/// Maps normalized [PoseResult] coordinates to the actual canvas size,
+/// drawing landmarks as neon-green dots and bone connections as
+/// electric-blue lines. Optionally displays angle arcs on key joints.
 class SkeletonPainter extends CustomPainter {
+  final PoseResult poseResult;
+  final Size imageSize;
+  final bool showAngles;
+
+  SkeletonPainter({
+    required this.poseResult,
+    required this.imageSize,
+    this.showAngles = true,
+  });
+
+  // MoveNet 17-keypoint bone connections (index pairs).
+  static const List<List<int>> _connections = [
+    [0, 1], [0, 2], [1, 3], [2, 4], // head
+    [5, 6], // shoulders
+    [5, 7], [7, 9], // left arm
+    [6, 8], [8, 10], // right arm
+    [5, 11], [6, 12], // torso
+    [11, 12], // hips
+    [11, 13], [13, 15], // left leg
+    [12, 14], [14, 16], // right leg
+  ];
+
   @override
   void paint(Canvas canvas, Size size) {
-    // This is a placeholder for the 33-point MediaPipe/MoveNet skeleton.
-    // It draws a static mock skeleton for UI visualization purposes.
-    
-    final paintLine = Paint()
-      ..color = AppColors.electricBlue.withOpacity(0.6)
+    if (poseResult.isEmpty) return;
+
+    final landmarks = poseResult.landmarks;
+
+    final bonePaint = Paint()
+      ..color = AppColors.electricBlue.withValues(alpha: 0.7)
       ..strokeWidth = 4.0
       ..strokeCap = StrokeCap.round;
 
-    final paintNode = Paint()
+    final jointPaint = Paint()
       ..color = AppColors.neonGreen
       ..style = PaintingStyle.fill;
-      
-    final paintNodeOutline = Paint()
+
+    final jointOutlinePaint = Paint()
       ..color = Colors.white
       ..strokeWidth = 2.0
       ..style = PaintingStyle.stroke;
 
-    // A few mock points mimicking a human figure (head, shoulders, elbows, hands, hips, knees, feet)
-    final double cx = size.width / 2;
-    final double cy = size.height / 2;
-    
-    // Nodes
-    final head = Offset(cx, cy - 150);
-    final lShoulder = Offset(cx - 50, cy - 80);
-    final rShoulder = Offset(cx + 50, cy - 80);
-    final lElbow = Offset(cx - 80, cy - 20);
-    final rElbow = Offset(cx + 80, cy - 20);
-    final lHand = Offset(cx - 70, cy + 40);
-    final rHand = Offset(cx + 70, cy + 40);
-    final lHip = Offset(cx - 30, cy + 60);
-    final rHip = Offset(cx + 30, cy + 60);
-    final lKnee = Offset(cx - 40, cy + 150);
-    final rKnee = Offset(cx + 40, cy + 150);
-    final lFoot = Offset(cx - 50, cy + 240);
-    final rFoot = Offset(cx + 50, cy + 240);
+    final lowConfPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.2)
+      ..strokeWidth = 2.0
+      ..strokeCap = StrokeCap.round;
 
-    // Draw connections (bones)
-    canvas.drawLine(head, Offset(cx, cy - 80), paintLine); // Neck
-    canvas.drawLine(lShoulder, rShoulder, paintLine); // Shoulders
-    canvas.drawLine(lShoulder, lElbow, paintLine);
-    canvas.drawLine(rShoulder, rElbow, paintLine);
-    canvas.drawLine(lElbow, lHand, paintLine);
-    canvas.drawLine(rElbow, rHand, paintLine);
-    canvas.drawLine(Offset(cx, cy - 80), Offset(cx, cy + 60), paintLine); // Spine
-    canvas.drawLine(lHip, rHip, paintLine); // Pelvis
-    canvas.drawLine(lHip, lKnee, paintLine);
-    canvas.drawLine(rHip, rKnee, paintLine);
-    canvas.drawLine(lKnee, lFoot, paintLine);
-    canvas.drawLine(rKnee, rFoot, paintLine);
+    // Map normalized coords to canvas
+    Offset toCanvas(PoseLandmark lm) {
+      // MoveNet coordinates are normalized [0, 1].
+      // We mirror X for front-camera selfie view.
+      return Offset(
+        (1.0 - lm.x) * size.width,
+        lm.y * size.height,
+      );
+    }
 
-    // Draw nodes (joints)
-    final nodes = [
-      head, lShoulder, rShoulder, lElbow, rElbow, lHand, rHand,
-      lHip, rHip, lKnee, rKnee, lFoot, rFoot
-    ];
+    // ── Draw bones ──
+    for (final conn in _connections) {
+      final a = landmarks[conn[0]];
+      final b = landmarks[conn[1]];
 
-    for (var node in nodes) {
-      canvas.drawCircle(node, 6.0, paintNode);
-      canvas.drawCircle(node, 6.0, paintNodeOutline);
+      final paint = (a.isVisible && b.isVisible) ? bonePaint : lowConfPaint;
+      canvas.drawLine(toCanvas(a), toCanvas(b), paint);
+    }
+
+    // ── Draw joints ──
+    for (final lm in landmarks) {
+      final pos = toCanvas(lm);
+      final radius = lm.isVisible ? 6.0 : 3.0;
+
+      if (lm.isVisible) {
+        canvas.drawCircle(pos, radius, jointPaint);
+        canvas.drawCircle(pos, radius, jointOutlinePaint);
+      } else {
+        canvas.drawCircle(
+          pos,
+          radius,
+          Paint()..color = Colors.white.withValues(alpha: 0.3),
+        );
+      }
+    }
+
+    // ── Draw angle arcs on key joints ──
+    if (showAngles) {
+      _drawAngleArc(canvas, size, poseResult.leftHip, poseResult.leftKnee,
+          poseResult.leftAnkle, toCanvas);
+      _drawAngleArc(canvas, size, poseResult.rightHip, poseResult.rightKnee,
+          poseResult.rightAnkle, toCanvas);
+      _drawAngleArc(canvas, size, poseResult.leftShoulder,
+          poseResult.leftElbow, poseResult.leftWrist, toCanvas);
+      _drawAngleArc(canvas, size, poseResult.rightShoulder,
+          poseResult.rightElbow, poseResult.rightWrist, toCanvas);
     }
   }
 
+  void _drawAngleArc(
+    Canvas canvas,
+    Size size,
+    PoseLandmark? a,
+    PoseLandmark? b,
+    PoseLandmark? c,
+    Offset Function(PoseLandmark) toCanvas,
+  ) {
+    final angle = AngleCalculator.calculateAngle(a, b, c);
+    if (angle == null || b == null) return;
+
+    final center = toCanvas(b);
+    final arcRadius = 20.0;
+
+    // Determine color from angle quality
+    final Color arcColor;
+    if (angle >= 70 && angle <= 160) {
+      arcColor = AppColors.neonGreen.withValues(alpha: 0.6);
+    } else {
+      arcColor = AppColors.biometricRed.withValues(alpha: 0.6);
+    }
+
+    final arcPaint = Paint()
+      ..color = arcColor
+      ..strokeWidth = 2.5
+      ..style = PaintingStyle.stroke;
+
+    final sweepAngle = angle * pi / 180;
+    final startAngle = atan2(
+      toCanvas(a!).dy - center.dy,
+      toCanvas(a).dx - center.dx,
+    );
+
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: arcRadius),
+      startAngle,
+      sweepAngle,
+      false,
+      arcPaint,
+    );
+
+    // Draw angle text
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: '${angle.round()}°',
+        style: TextStyle(
+          color: arcColor,
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+
+    textPainter.paint(
+      canvas,
+      center + const Offset(22, -6),
+    );
+  }
+
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant SkeletonPainter oldDelegate) {
+    return oldDelegate.poseResult.timestamp != poseResult.timestamp;
+  }
 }

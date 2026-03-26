@@ -2,6 +2,7 @@
 enum ExerciseType {
   squat,
   pushUp,
+  bicepCurl,
 }
 
 /// The result of evaluating a single frame's pose against an exercise.

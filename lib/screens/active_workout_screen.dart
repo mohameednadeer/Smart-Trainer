@@ -359,9 +359,11 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen>
                       Consumer(
                         builder: (context, ref, _) {
                           final exercise = ref.watch(selectedExerciseProvider);
-                          final label = exercise == ExerciseType.squat
-                              ? 'Squat Exercise'
-                              : 'Push-up Exercise';
+                          final label = switch (exercise) {
+                            ExerciseType.squat => 'Squat Exercise',
+                            ExerciseType.pushUp => 'Push-up Exercise',
+                            ExerciseType.bicepCurl => 'Bicep Curl Exercise',
+                          };
                           return Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 20, vertical: 12),

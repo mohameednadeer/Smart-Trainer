@@ -350,6 +350,12 @@ class _ExerciseToggle extends StatelessWidget {
             'Push-up',
             LucideIcons.zap,
           ),
+          _buildOption(
+            context,
+            ExerciseType.bicepCurl,
+            'Bicep Curl',
+            LucideIcons.dumbbell,
+          ),
         ],
       ),
     );

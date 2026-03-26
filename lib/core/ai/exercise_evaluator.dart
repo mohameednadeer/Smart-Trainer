@@ -39,6 +39,8 @@ class ExerciseEvaluator {
         return _evaluateSquat(poseResult);
       case ExerciseType.pushUp:
         return _evaluatePushUp(poseResult);
+      case ExerciseType.bicepCurl:
+        return _evaluateBicepCurl(poseResult);
     }
   }
 
@@ -194,6 +196,88 @@ class ExerciseEvaluator {
       message = 'Arms extended — ready for next rep';
     } else {
       message = 'Get into plank position…';
+    }
+
+    _totalFrames++;
+    if (isCorrect && _currentPhase != 'idle') _correctFrames++;
+
+    return ExerciseFeedback(
+      isCorrect: isCorrect,
+      message: message,
+      jointAngles: angles,
+      repCount: _repCount,
+      phase: _currentPhase,
+      accuracyScore: accuracyScore,
+    );
+  }
+
+  // ─────────────────────── BICEP CURL ───────────────────────
+
+  ExerciseFeedback _evaluateBicepCurl(PoseResult pose) {
+    final angles = <String, double>{};
+
+    // Elbow angle (shoulder → elbow → wrist) — primary joint for curls
+    final leftElbowAngle = AngleCalculator.calculateAngle(
+      pose.leftShoulder, pose.leftElbow, pose.leftWrist,
+    );
+    final rightElbowAngle = AngleCalculator.calculateAngle(
+      pose.rightShoulder, pose.rightElbow, pose.rightWrist,
+    );
+
+    // Shoulder angle (hip → shoulder → elbow) — detects swinging / cheating
+    final leftShoulderAngle = AngleCalculator.calculateAngle(
+      pose.leftHip, pose.leftShoulder, pose.leftElbow,
+    );
+    final rightShoulderAngle = AngleCalculator.calculateAngle(
+      pose.rightHip, pose.rightShoulder, pose.rightElbow,
+    );
+
+    if (leftElbowAngle != null) angles['leftElbow'] = leftElbowAngle;
+    if (rightElbowAngle != null) angles['rightElbow'] = rightElbowAngle;
+    if (leftShoulderAngle != null) angles['leftShoulder'] = leftShoulderAngle;
+    if (rightShoulderAngle != null) angles['rightShoulder'] = rightShoulderAngle;
+
+    if (angles.isEmpty) {
+      return ExerciseFeedback(
+        isCorrect: false,
+        message: 'Arms not fully visible — step back',
+        jointAngles: angles,
+        repCount: _repCount,
+        phase: _currentPhase,
+        accuracyScore: accuracyScore,
+      );
+    }
+
+    final avgElbowAngle = _average(leftElbowAngle, rightElbowAngle);
+    final avgShoulderAngle = _average(leftShoulderAngle, rightShoulderAngle);
+
+    // ── Phase detection & rep counting ──
+    // Extended (down): elbow > 150°
+    // Curled (top):    elbow < 50°
+    if (avgElbowAngle != null) {
+      if (avgElbowAngle > 150 && _currentPhase != 'down') {
+        if (_currentPhase == 'up') _repCount++;
+        _currentPhase = 'down';
+      } else if (avgElbowAngle < 50) {
+        _currentPhase = 'up';
+      }
+    }
+
+    // ── Form evaluation ──
+    String message;
+    bool isCorrect = true;
+
+    if (avgShoulderAngle != null && avgShoulderAngle > 45) {
+      message = 'Keep elbows pinned — don\'t swing';
+      isCorrect = false;
+    } else if (_currentPhase == 'up' &&
+        avgElbowAngle != null &&
+        avgElbowAngle < 50) {
+      message = 'Good squeeze — lower slowly!';
+    } else if (_currentPhase == 'down') {
+      message = 'Arms extended — curl up!';
+    } else {
+      message = 'Keep curling…';
     }
 
     _totalFrames++;

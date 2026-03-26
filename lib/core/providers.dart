@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:pedometer/pedometer.dart';
 
 import 'ai/exercise_evaluator.dart';
 import 'ai/models/exercise_feedback.dart';
@@ -114,3 +115,40 @@ class UserProfileNotifier extends Notifier<UserProfile> {
 }
 
 final userProvider = NotifierProvider<UserProfileNotifier, UserProfile>(UserProfileNotifier.new);
+
+// ─────────────────── Step Counter ───────────────────
+
+class StepCounterNotifier extends Notifier<int> {
+  int _initialSteps = -1;
+  DateTime _lastResetDate = DateTime.now();
+
+  @override
+  int build() {
+    _startListening();
+    return 0;
+  }
+
+  void _startListening() {
+    Pedometer.stepCountStream.listen((event) {
+      final now = DateTime.now();
+      // Reset at midnight (new day)
+      if (now.day != _lastResetDate.day ||
+          now.month != _lastResetDate.month ||
+          now.year != _lastResetDate.year) {
+        _initialSteps = event.steps;
+        _lastResetDate = now;
+      }
+
+      if (_initialSteps == -1) {
+        _initialSteps = event.steps;
+      }
+
+      state = event.steps - _initialSteps;
+    }, onError: (_) {
+      // Pedometer not available on this device
+      state = 0;
+    });
+  }
+}
+
+final stepsProvider = NotifierProvider<StepCounterNotifier, int>(StepCounterNotifier.new);

@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:smart_trainer/core/providers.dart';
 import 'package:smart_trainer/theme/app_colors.dart';
 import 'package:smart_trainer/theme/theme_ext.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       backgroundColor: context.bgColor,
       body: SafeArea(
@@ -19,7 +21,7 @@ class DashboardScreen extends StatelessWidget {
             children: [
               _buildHeader(context),
               const SizedBox(height: 32),
-              _buildStatCardsRow(context),
+              _buildStatCardsRow(context, ref),
               const SizedBox(height: 32),
               _buildStartWorkoutButton(context),
               const SizedBox(height: 32),
@@ -100,36 +102,44 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatCardsRow(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildStatCard(context,
+  Widget _buildStatCardsRow(BuildContext context, WidgetRef ref) {
+    final steps = ref.watch(stepsProvider);
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          _buildStatCard(context,
             icon: LucideIcons.heart,
             iconColor: AppColors.biometricRed,
             value: '72',
             label: 'BPM',
           ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildStatCard(context,
+          const SizedBox(width: 12),
+          _buildStatCard(context,
             icon: LucideIcons.flame,
             iconColor: Colors.orangeAccent,
             value: '245',
             label: 'Calories',
           ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildStatCard(context,
+          const SizedBox(width: 12),
+          _buildStatCard(context,
             icon: LucideIcons.target,
             iconColor: AppColors.electricBlue,
             value: '3/5',
             label: 'Week Goal',
           ),
-        ),
-      ],
+          const SizedBox(width: 12),
+          _buildStatCard(context,
+            icon: LucideIcons.footprints,
+            iconColor: AppColors.neonGreen,
+            value: steps >= 1000
+                ? '${(steps / 1000).toStringAsFixed(1)}k'
+                : '$steps',
+            label: 'Steps Today',
+          ),
+        ],
+      ),
     );
   }
 
@@ -140,6 +150,7 @@ class DashboardScreen extends StatelessWidget {
     required String label,
   }) {
     return Container(
+      width: 90,
       padding: const EdgeInsets.symmetric(vertical: 20),
       decoration: BoxDecoration(
         color: context.surfaceColor,

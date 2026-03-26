@@ -325,38 +325,41 @@ class _ExerciseToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: context.surfaceColor.withValues(alpha: 0.8),
-        borderRadius: BorderRadius.circular(32),
-        border: Border.all(
-          color: AppColors.electricBlue.withValues(alpha: 0.3),
-          width: 1,
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: context.surfaceColor.withValues(alpha: 0.8),
+          borderRadius: BorderRadius.circular(32),
+          border: Border.all(
+            color: AppColors.electricBlue.withValues(alpha: 0.3),
+            width: 1,
+          ),
         ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildOption(
-            context,
-            ExerciseType.squat,
-            'Squat',
-            LucideIcons.activity,
-          ),
-          _buildOption(
-            context,
-            ExerciseType.pushUp,
-            'Push-up',
-            LucideIcons.zap,
-          ),
-          _buildOption(
-            context,
-            ExerciseType.bicepCurl,
-            'Bicep Curl',
-            LucideIcons.dumbbell,
-          ),
-        ],
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildOption(
+              context,
+              ExerciseType.squat,
+              'Squat',
+              LucideIcons.activity,
+            ),
+            _buildOption(
+              context,
+              ExerciseType.pushUp,
+              'Push-up',
+              LucideIcons.zap,
+            ),
+            _buildOption(
+              context,
+              ExerciseType.bicepCurl,
+              'Bicep Curl',
+              LucideIcons.dumbbell,
+            ),
+          ],
+        ),
       ),
     );
   }

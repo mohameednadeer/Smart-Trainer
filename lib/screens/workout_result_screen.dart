@@ -163,7 +163,7 @@ class WorkoutResultScreen extends ConsumerWidget {
                 physics: const NeverScrollableScrollPhysics(),
                 mainAxisSpacing: 16,
                 crossAxisSpacing: 16,
-                childAspectRatio: 1.4,
+                childAspectRatio: 1.15,
                 children: [
                   _buildStatGridItem(context, LucideIcons.clock, 'Duration', '0:45', 'mins', AppColors.electricBlue),
                   _buildStatGridItem(context, LucideIcons.heart, 'Avg BPM', '142', 'bpm', AppColors.biometricRed),
@@ -262,7 +262,7 @@ class WorkoutResultScreen extends ConsumerWidget {
   Widget _buildStatGridItem(BuildContext context, IconData icon, String title,
       String value, String unit, Color iconColor) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: context.surfaceColor,
         borderRadius: BorderRadius.circular(20),
@@ -270,40 +270,42 @@ class WorkoutResultScreen extends ConsumerWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: iconColor.withOpacity(0.1),
                   border: Border.all(color: iconColor.withOpacity(0.2)),
                 ),
-                child: Icon(icon, color: iconColor, size: 16),
+                child: Icon(icon, color: iconColor, size: 14),
               ),
-              const SizedBox(width: 8),
-              Text(
-                title,
-                style: TextStyle(
-                    color: context.secondaryTextColor, fontSize: 13),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                      color: context.secondaryTextColor, fontSize: 12),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
           Text(
             value,
             style: TextStyle(
                 color: context.textColor,
-                fontSize: 26,
+                fontSize: 24,
                 fontWeight: FontWeight.bold),
           ),
           Text(
             unit,
             style: TextStyle(
                 color: context.secondaryTextColor.withOpacity(0.5),
-                fontSize: 12),
+                fontSize: 11),
           ),
         ],
       ),

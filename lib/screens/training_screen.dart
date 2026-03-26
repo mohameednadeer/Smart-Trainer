@@ -141,7 +141,7 @@ class _TrainingScreenState extends ConsumerState<TrainingScreen> {
                         child: IconButton(
                           icon: const Icon(LucideIcons.x,
                               color: Colors.white, size: 24),
-                          onPressed: () => context.go('/dashboard'),
+                          onPressed: () => context.pop(),
                         ),
                       ),
 

@@ -232,7 +232,12 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen>
                                 child: IconButton(
                                   icon: const Icon(LucideIcons.x,
                                       color: Colors.white, size: 24),
-                                  onPressed: () => context.go('/dashboard'),
+                                  onPressed: () {
+                                    _stopwatch.stop();
+                                    final cameraService = ref.read(cameraServiceProvider);
+                                    cameraService.stopImageStream();
+                                    context.pop();
+                                  },
                                 ),
                               ),
                               const SizedBox(width: 8),

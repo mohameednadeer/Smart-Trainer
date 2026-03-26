@@ -5,19 +5,27 @@ import 'models/pose_result.dart';
 /// Evaluates exercise form by analyzing joint angles from MoveNet keypoints.
 ///
 /// Maintains internal state for rep counting via phase detection
-/// (up/down transitions).
+/// (up/down transitions) and tracks accuracy across all frames.
 class ExerciseEvaluator {
-  // ── Internal state for rep counting ──
+  // ── Internal state ──
 
   String _currentPhase = 'idle'; // 'idle', 'up', 'down'
   int _repCount = 0;
+  int _correctFrames = 0;
+  int _totalFrames = 0;
 
   int get repCount => _repCount;
 
-  /// Resets rep count and phase when switching exercises.
+  /// Live accuracy score (0.0 – 1.0).
+  double get accuracyScore =>
+      _totalFrames == 0 ? 0.0 : _correctFrames / _totalFrames;
+
+  /// Resets all state when starting a new session.
   void reset() {
     _currentPhase = 'idle';
     _repCount = 0;
+    _correctFrames = 0;
+    _totalFrames = 0;
   }
 
   /// Evaluates the given [poseResult] against the selected [exerciseType].
@@ -39,28 +47,20 @@ class ExerciseEvaluator {
   ExerciseFeedback _evaluateSquat(PoseResult pose) {
     final angles = <String, double>{};
 
-    // Calculate knee angles (hip → knee → ankle)
+    // Knee angle (hip → knee → ankle)
     final leftKneeAngle = AngleCalculator.calculateAngle(
-      pose.leftHip,
-      pose.leftKnee,
-      pose.leftAnkle,
+      pose.leftHip, pose.leftKnee, pose.leftAnkle,
     );
     final rightKneeAngle = AngleCalculator.calculateAngle(
-      pose.rightHip,
-      pose.rightKnee,
-      pose.rightAnkle,
+      pose.rightHip, pose.rightKnee, pose.rightAnkle,
     );
 
-    // Calculate hip angles (shoulder → hip → knee)
+    // Hip angle (shoulder → hip → knee)
     final leftHipAngle = AngleCalculator.calculateAngle(
-      pose.leftShoulder,
-      pose.leftHip,
-      pose.leftKnee,
+      pose.leftShoulder, pose.leftHip, pose.leftKnee,
     );
     final rightHipAngle = AngleCalculator.calculateAngle(
-      pose.rightShoulder,
-      pose.rightHip,
-      pose.rightKnee,
+      pose.rightShoulder, pose.rightHip, pose.rightKnee,
     );
 
     if (leftKneeAngle != null) angles['leftKnee'] = leftKneeAngle;
@@ -75,23 +75,21 @@ class ExerciseEvaluator {
         jointAngles: angles,
         repCount: _repCount,
         phase: _currentPhase,
+        accuracyScore: accuracyScore,
       );
     }
 
-    // Use the average of both sides for evaluation
     final avgKneeAngle = _average(leftKneeAngle, rightKneeAngle);
     final avgHipAngle = _average(leftHipAngle, rightHipAngle);
 
     // ── Phase detection & rep counting ──
-    // Standing: knees > 160°
-    // Descending/bottom: knees 70°–100°
+    // Standing: knees > 155°
+    // Bottom: knees 65°–115° (proper parallel-or-below squat depth)
     if (avgKneeAngle != null) {
-      if (avgKneeAngle > 160 && _currentPhase != 'up') {
-        if (_currentPhase == 'down') {
-          _repCount++;
-        }
+      if (avgKneeAngle > 155 && _currentPhase != 'up') {
+        if (_currentPhase == 'down') _repCount++;
         _currentPhase = 'up';
-      } else if (avgKneeAngle >= 70 && avgKneeAngle <= 100) {
+      } else if (avgKneeAngle >= 65 && avgKneeAngle <= 115) {
         _currentPhase = 'down';
       }
     }
@@ -100,16 +98,16 @@ class ExerciseEvaluator {
     String message;
     bool isCorrect = true;
 
-    if (avgKneeAngle != null && avgKneeAngle < 60) {
+    if (avgKneeAngle != null && avgKneeAngle < 55) {
       message = 'Too deep — stop at parallel';
       isCorrect = false;
-    } else if (avgHipAngle != null && avgHipAngle < 50) {
+    } else if (avgHipAngle != null && avgHipAngle < 45) {
       message = 'Leaning too far forward — keep chest up';
       isCorrect = false;
     } else if (_currentPhase == 'down' &&
         avgKneeAngle != null &&
-        avgKneeAngle >= 70 &&
-        avgKneeAngle <= 100) {
+        avgKneeAngle >= 65 &&
+        avgKneeAngle <= 115) {
       message = 'Great depth — push back up!';
     } else if (_currentPhase == 'up') {
       message = 'Standing — ready for next rep';
@@ -117,12 +115,16 @@ class ExerciseEvaluator {
       message = 'Keep going…';
     }
 
+    _totalFrames++;
+    if (isCorrect && _currentPhase != 'idle') _correctFrames++;
+
     return ExerciseFeedback(
       isCorrect: isCorrect,
       message: message,
       jointAngles: angles,
       repCount: _repCount,
       phase: _currentPhase,
+      accuracyScore: accuracyScore,
     );
   }
 
@@ -133,26 +135,18 @@ class ExerciseEvaluator {
 
     // Elbow angle (shoulder → elbow → wrist)
     final leftElbowAngle = AngleCalculator.calculateAngle(
-      pose.leftShoulder,
-      pose.leftElbow,
-      pose.leftWrist,
+      pose.leftShoulder, pose.leftElbow, pose.leftWrist,
     );
     final rightElbowAngle = AngleCalculator.calculateAngle(
-      pose.rightShoulder,
-      pose.rightElbow,
-      pose.rightWrist,
+      pose.rightShoulder, pose.rightElbow, pose.rightWrist,
     );
 
     // Body alignment: shoulder → hip → ankle
     final leftBodyAngle = AngleCalculator.calculateAngle(
-      pose.leftShoulder,
-      pose.leftHip,
-      pose.leftAnkle,
+      pose.leftShoulder, pose.leftHip, pose.leftAnkle,
     );
     final rightBodyAngle = AngleCalculator.calculateAngle(
-      pose.rightShoulder,
-      pose.rightHip,
-      pose.rightAnkle,
+      pose.rightShoulder, pose.rightHip, pose.rightAnkle,
     );
 
     if (leftElbowAngle != null) angles['leftElbow'] = leftElbowAngle;
@@ -167,6 +161,7 @@ class ExerciseEvaluator {
         jointAngles: angles,
         repCount: _repCount,
         phase: _currentPhase,
+        accuracyScore: accuracyScore,
       );
     }
 
@@ -175,10 +170,8 @@ class ExerciseEvaluator {
 
     // ── Phase detection & rep counting ──
     if (avgElbowAngle != null) {
-      if (avgElbowAngle > 160 && _currentPhase != 'up') {
-        if (_currentPhase == 'down') {
-          _repCount++;
-        }
+      if (avgElbowAngle > 155 && _currentPhase != 'up') {
+        if (_currentPhase == 'down') _repCount++;
         _currentPhase = 'up';
       } else if (avgElbowAngle < 90) {
         _currentPhase = 'down';
@@ -203,12 +196,16 @@ class ExerciseEvaluator {
       message = 'Get into plank position…';
     }
 
+    _totalFrames++;
+    if (isCorrect && _currentPhase != 'idle') _correctFrames++;
+
     return ExerciseFeedback(
       isCorrect: isCorrect,
       message: message,
       jointAngles: angles,
       repCount: _repCount,
       phase: _currentPhase,
+      accuracyScore: accuracyScore,
     );
   }
 

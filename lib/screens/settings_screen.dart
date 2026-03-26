@@ -1,23 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smart_trainer/theme/app_colors.dart';
+import 'package:smart_trainer/core/providers.dart';
 
-class SettingsScreen extends StatefulWidget {
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
   @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
-  bool isDarkMode = true;
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool workoutReminders = true;
+
+  bool get isLight => ref.watch(themeProvider) == ThemeMode.light;
+  Color get bgColor => isLight ? const Color(0xFFF5F7FA) : AppColors.background;
+  Color get surfaceColor => isLight ? Colors.white : AppColors.surface;
+  Color get textColor => isLight ? Colors.black87 : Colors.white;
+  Color get secondaryTextColor => isLight ? Colors.black54 : AppColors.textSecondary;
+  Color get glassBorderColor => isLight ? Colors.grey.withOpacity(0.2) : AppColors.glassBorder;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: bgColor,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
@@ -33,8 +41,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: 'Dark Mode',
                   icon: LucideIcons.moon,
                   iconColor: AppColors.electricBlue,
-                  value: isDarkMode,
-                  onChanged: (val) => setState(() => isDarkMode = val),
+                  value: !isLight,
+                  onChanged: (val) {
+                    ref.read(themeProvider.notifier).state = val ? ThemeMode.dark : ThemeMode.light;
+                  },
                 ),
               ),
               
@@ -109,19 +119,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
       children: [
         Container(
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: surfaceColor,
             shape: BoxShape.circle,
           ),
           child: IconButton(
-            icon: const Icon(LucideIcons.arrowLeft, color: AppColors.electricBlue, size: 24),
+            icon: Icon(LucideIcons.arrowLeft, color: AppColors.electricBlue, size: 24),
             onPressed: () => context.pop(),
           ),
         ),
         const SizedBox(width: 16),
-        const Text(
+        Text(
           'Settings',
           style: TextStyle(
-            color: Colors.white,
+            color: textColor,
             fontSize: 24,
             fontWeight: FontWeight.bold,
           ),
@@ -136,7 +146,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Text(
         title,
         style: TextStyle(
-          color: AppColors.textSecondary.withOpacity(0.5),
+          color: secondaryTextColor.withOpacity(0.5),
           fontSize: 12,
           fontWeight: FontWeight.bold,
           letterSpacing: 1.5,
@@ -150,9 +160,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       margin: const EdgeInsets.only(bottom: 24.0),
       padding: padding ?? const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: surfaceColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.glassBorder),
+        border: Border.all(color: glassBorderColor),
       ),
       child: child,
     );
@@ -187,8 +197,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Expanded(
               child: Text(
                 title,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: textColor,
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),
@@ -200,13 +210,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
               activeColor: Colors.white,
               activeTrackColor: AppColors.electricBlue,
               inactiveThumbColor: AppColors.textSecondary,
-              inactiveTrackColor: AppColors.surface,
+              inactiveTrackColor: surfaceColor,
             ),
           ],
         ),
         if (showBorder) ...[
           const SizedBox(height: 16),
-          Divider(color: AppColors.glassBorder, height: 1),
+          Divider(color: glassBorderColor, height: 1),
           const SizedBox(height: 16),
         ],
       ],
@@ -238,8 +248,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     children: [
                       Text(
                         title,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: textColor,
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
@@ -249,7 +259,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         Text(
                           subtitle,
                           style: TextStyle(
-                            color: AppColors.textSecondary,
+                            color: secondaryTextColor,
                             fontSize: 13,
                           ),
                         ),
@@ -257,12 +267,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ],
                   ),
                 ),
-                Icon(LucideIcons.chevronRight, color: AppColors.textSecondary.withOpacity(0.5), size: 20),
+                Icon(LucideIcons.chevronRight, color: secondaryTextColor.withOpacity(0.5), size: 20),
               ],
             ),
             if (showBorder) ...[
               const SizedBox(height: 16),
-              Divider(color: AppColors.glassBorder, height: 1),
+              Divider(color: glassBorderColor, height: 1),
             ],
           ],
         ),
@@ -275,21 +285,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 24),
       decoration: BoxDecoration(
-        color: AppColors.surface.withOpacity(0.5),
+        color: surfaceColor.withOpacity(0.5),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.glassBorder.withOpacity(0.3)),
+        border: Border.all(color: glassBorderColor.withOpacity(0.3)),
       ),
       child: Column(
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(LucideIcons.zap, color: AppColors.electricBlue, size: 20),
+              Icon(LucideIcons.zap, color: AppColors.electricBlue, size: 20),
               const SizedBox(width: 8),
-              const Text(
+              Text(
                 'Smart Trainer',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: textColor,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -299,12 +309,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 8),
           Text(
             'Version 1.0.0',
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+            style: TextStyle(color: secondaryTextColor, fontSize: 13),
           ),
           const SizedBox(height: 4),
           Text(
             'AI Fitness Assistant with MediaPipe & MoveNet',
-            style: TextStyle(color: AppColors.textSecondary.withOpacity(0.5), fontSize: 13),
+            style: TextStyle(color: secondaryTextColor.withOpacity(0.5), fontSize: 13),
           ),
         ],
       ),

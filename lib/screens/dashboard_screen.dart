@@ -38,34 +38,36 @@ class DashboardScreen extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(LucideIcons.zap, color: AppColors.neonGreen, size: 16),
-                const SizedBox(width: 8),
-                Text(
-                  'WELCOME BACK',
-                  style: TextStyle(
-                    color: AppColors.neonGreen,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                    letterSpacing: 1.2,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(LucideIcons.zap, color: AppColors.neonGreen, size: 16),
+                  const SizedBox(width: 8),
+                  Text(
+                    'WELCOME BACK',
+                    style: TextStyle(
+                      color: AppColors.neonGreen,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                      letterSpacing: 1.2,
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Ready to crush it? 💪',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
+                ],
               ),
-            ),
-          ],
+              const SizedBox(height: 8),
+              const Text(
+                'Ready to crush it? 💪',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
         ),
         Row(
           children: [

@@ -119,14 +119,17 @@ class PoseDetectorService {
   }
 
   /// Runs TFLite inference and returns raw output tensor.
-  List<List<List<double>>> _runInference(Float32List inputBytes) {
+  List<List<List<List<double>>>> _runInference(Float32List inputBytes) {
     // MoveNet Lightning output: [1, 1, 17, 3]
     // Each keypoint: [y, x, confidence]
     final output = List.generate(
       1,
       (_) => List.generate(
-        17,
-        (_) => List.filled(3, 0.0),
+        1,
+        (_) => List.generate(
+          17,
+          (_) => List.filled(3, 0.0),
+        ),
       ),
     );
 
@@ -137,16 +140,16 @@ class PoseDetectorService {
   }
 
   /// Parses the raw TFLite output tensor into a [PoseResult].
-  PoseResult _parseOutput(List<List<List<double>>> output) {
+  PoseResult _parseOutput(List<List<List<List<double>>>> output) {
     final landmarks = <PoseLandmark>[];
 
     for (int i = 0; i < 17; i++) {
       landmarks.add(
         PoseLandmark(
           type: PoseLandmarkType.values[i],
-          y: output[0][i][0], // MoveNet outputs y first
-          x: output[0][i][1],
-          confidence: output[0][i][2],
+          y: output[0][0][i][0], // MoveNet outputs y first
+          x: output[0][0][i][1],
+          confidence: output[0][0][i][2],
         ),
       );
     }

@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'ai/exercise_evaluator.dart';
@@ -61,3 +62,14 @@ final exerciseFeedbackProvider = Provider<ExerciseFeedback>((ref) {
 
   return evaluator.evaluate(poseResult, exerciseType);
 });
+
+// ─────────────────── Theme ───────────────────
+
+class ThemeModeNotifier extends Notifier<ThemeMode> {
+  @override
+  ThemeMode build() => ThemeMode.dark;
+  set state(ThemeMode value) => super.state = value;
+}
+
+/// Provides the current application theme mode.
+final themeProvider = NotifierProvider<ThemeModeNotifier, ThemeMode>(ThemeModeNotifier.new);

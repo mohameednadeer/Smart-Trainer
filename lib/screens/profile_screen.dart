@@ -116,9 +116,12 @@ class ProfileScreen extends StatelessWidget {
                   children: [
                     Icon(LucideIcons.mail, color: AppColors.textSecondary, size: 14),
                     const SizedBox(width: 6),
-                    Text(
-                      'alex.johnson@email.com',
-                      style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                    Expanded(
+                      child: Text(
+                        'alex.johnson@email.com',
+                        style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ],
                 ),
@@ -127,9 +130,12 @@ class ProfileScreen extends StatelessWidget {
                   children: [
                     Icon(LucideIcons.calendar, color: AppColors.textSecondary, size: 14),
                     const SizedBox(width: 6),
-                    Text(
-                      'Joined January 2026',
-                      style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                    Expanded(
+                      child: Text(
+                        'Joined January 2026',
+                        style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ],
                 ),

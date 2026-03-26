@@ -60,41 +60,52 @@ class PoseDetectorService {
 
   /// Converts a YUV420 camera image to a flat Uint8 RGB tensor
   /// of shape [1, 192, 192, 3] as expected by MoveNet Lightning.
+  /// Rotates the image 90° clockwise to match Android portrait orientation.
   static Uint8List? _convertCameraImage(CameraImage image) {
     try {
-      final int width = image.width;
-      final int height = image.height;
+      final int srcWidth = image.width;   // landscape width (e.g. 1280)
+      final int srcHeight = image.height; // landscape height (e.g. 720)
 
       // YUV420 planes
       final yPlane = image.planes[0].bytes;
       final uPlane = image.planes[1].bytes;
       final vPlane = image.planes[2].bytes;
 
+      final int yRowStride = image.planes[0].bytesPerRow;
       final int uvRowStride = image.planes[1].bytesPerRow;
       final int uvPixelStride = image.planes[1].bytesPerPixel ?? 1;
 
-      // Scale factors for resizing to 192×192
-      final double scaleX = width / _inputSize;
-      final double scaleY = height / _inputSize;
+      // After 90° clockwise rotation: portrait width = srcHeight, portrait height = srcWidth
+      final int rotWidth = srcHeight;
+      final int rotHeight = srcWidth;
 
-      // MoveNet expects uint8 values in [0, 255]
+      // Scale factors from rotated dimensions to 192×192
+      final double scaleX = rotWidth / _inputSize;
+      final double scaleY = rotHeight / _inputSize;
+
       final input = Uint8List(1 * _inputSize * _inputSize * 3);
       int index = 0;
 
       for (int y = 0; y < _inputSize; y++) {
         for (int x = 0; x < _inputSize; x++) {
-          final int srcX = (x * scaleX).toInt().clamp(0, width - 1);
-          final int srcY = (y * scaleY).toInt().clamp(0, height - 1);
+          // Sample point in rotated portrait space
+          final int rotX = (x * scaleX).toInt().clamp(0, rotWidth - 1);
+          final int rotY = (y * scaleY).toInt().clamp(0, rotHeight - 1);
 
-          final int yIndex = srcY * width + srcX;
+          // Map back to original landscape coordinates (90° clockwise rotation):
+          // rotated(x, y) → original(srcWidth - 1 - rotY, rotX)
+          final int srcX = (srcWidth - 1 - rotY).clamp(0, srcWidth - 1);
+          final int srcY = rotX.clamp(0, srcHeight - 1);
+
+          final int yIndex = srcY * yRowStride + srcX;
           final int uvIndex =
               (srcY ~/ 2) * uvRowStride + (srcX ~/ 2) * uvPixelStride;
 
-          final int yVal = yPlane[yIndex];
+          final int yVal = yPlane[yIndex.clamp(0, yPlane.length - 1)];
           final int uVal = uPlane[uvIndex.clamp(0, uPlane.length - 1)];
           final int vVal = vPlane[uvIndex.clamp(0, vPlane.length - 1)];
 
-          // YUV → RGB conversion, keep as uint8 [0, 255]
+          // YUV → RGB, keep as uint8 [0, 255]
           input[index++] = (yVal + 1.370705 * (vVal - 128)).round().clamp(0, 255);
           input[index++] = (yVal - 0.337633 * (uVal - 128) - 0.698001 * (vVal - 128)).round().clamp(0, 255);
           input[index++] = (yVal + 1.732446 * (uVal - 128)).round().clamp(0, 255);

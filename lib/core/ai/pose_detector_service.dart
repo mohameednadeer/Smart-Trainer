@@ -49,9 +49,7 @@ class PoseDetectorService {
 
     // Convert CameraImage (YUV420) to a flat RGB byte list on a background
     // isolate so the UI thread is never blocked by pixel manipulation.
-    final inputBytes = await Isolate.run(
-      () => _convertCameraImage(image),
-    );
+    final inputBytes = _convertCameraImage(image);
 
     if (inputBytes == null) return PoseResult.empty();
 
@@ -113,8 +111,8 @@ class PoseDetectorService {
       }
 
       return input;
-    } catch (_) {
-      return null;
+    } catch (e) {
+      throw Exception('Camera Image Conversion Error: $e');
     }
   }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smart_trainer/theme/app_colors.dart';
+import 'package:smart_trainer/theme/theme_ext.dart';
 
 class WorkoutResultScreen extends StatelessWidget {
   const WorkoutResultScreen({super.key});
@@ -9,7 +10,7 @@ class WorkoutResultScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.bgColor,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 32.0),
@@ -43,16 +44,16 @@ class WorkoutResultScreen extends StatelessWidget {
               const SizedBox(height: 24),
               
               // Title
-              const Text(
+              Text(
                 'Workout Complete! 🎉',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: context.textColor,
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'You crushed it today!',
                 style: TextStyle(
                   color: AppColors.neonGreen,
@@ -66,16 +67,16 @@ class WorkoutResultScreen extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: context.surfaceColor,
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: AppColors.glassBorder),
+                  border: Border.all(color: context.glassBorderColor),
                 ),
                 child: Column(
                   children: [
-                    const Text(
+                    Text(
                       'Posture Accuracy Score',
                       style: TextStyle(
-                        color: AppColors.textSecondary,
+                        color: context.secondaryTextColor,
                         fontSize: 14,
                       ),
                     ),
@@ -95,7 +96,7 @@ class WorkoutResultScreen extends StatelessWidget {
                           Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Text(
+                              Text(
                                 '87%',
                                 style: TextStyle(
                                   color: AppColors.electricBlue,
@@ -130,10 +131,10 @@ class WorkoutResultScreen extends StatelessWidget {
                 crossAxisSpacing: 16,
                 childAspectRatio: 1.3,
                 children: [
-                  _buildStatGridItem(LucideIcons.clock, 'Duration', '0:45', 'mins', AppColors.electricBlue),
-                  _buildStatGridItem(LucideIcons.heart, 'Avg BPM', '142', 'bpm', AppColors.biometricRed),
-                  _buildStatGridItem(LucideIcons.flame, 'Calories', '9', 'kcal', Colors.orangeAccent),
-                  _buildStatGridItem(LucideIcons.target, 'Reps', '12', 'total', AppColors.neonGreen),
+                  _buildStatGridItem(context, LucideIcons.clock, 'Duration', '0:45', 'mins', AppColors.electricBlue),
+                  _buildStatGridItem(context, LucideIcons.heart, 'Avg BPM', '142', 'bpm', AppColors.biometricRed),
+                  _buildStatGridItem(context, LucideIcons.flame, 'Calories', '9', 'kcal', Colors.orangeAccent),
+                  _buildStatGridItem(context, LucideIcons.target, 'Reps', '12', 'total', AppColors.neonGreen),
                 ],
               ),
               const SizedBox(height: 40),
@@ -143,10 +144,10 @@ class WorkoutResultScreen extends StatelessWidget {
                 children: [
                   Icon(LucideIcons.trendingUp, color: AppColors.electricBlue, size: 20),
                   const SizedBox(width: 8),
-                  const Text(
+                  Text(
                     'Suggestions for Improvement',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: context.textColor,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
@@ -154,11 +155,11 @@ class WorkoutResultScreen extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 16),
-              _buildSuggestionItem('Great depth control', 'Your squat depth was consistent', LucideIcons.checkCircle, AppColors.neonGreen),
+              _buildSuggestionItem(context, 'Great depth control', 'Your squat depth was consistent', LucideIcons.checkCircle, AppColors.neonGreen),
               const SizedBox(height: 12),
-              _buildSuggestionItem('Improve back posture', 'Keep your back straighter during the descent', LucideIcons.trendingUp, Colors.orangeAccent),
+              _buildSuggestionItem(context, 'Improve back posture', 'Keep your back straighter during the descent', LucideIcons.trendingUp, Colors.orangeAccent),
               const SizedBox(height: 12),
-              _buildSuggestionItem('Increase reps', 'Try for 15-18 reps next time', LucideIcons.target, AppColors.electricBlue),
+              _buildSuggestionItem(context, 'Increase reps', 'Try for 15-18 reps next time', LucideIcons.target, AppColors.electricBlue),
               const SizedBox(height: 48),
 
               // Action Buttons
@@ -178,7 +179,7 @@ class WorkoutResultScreen extends StatelessWidget {
                     children: [
                       const Icon(LucideIcons.zap, color: Colors.white, size: 20),
                       const SizedBox(width: 12),
-                      const Text(
+                      Text(
                         'Try Another Exercise',
                         style: TextStyle(
                           color: Colors.white,
@@ -198,8 +199,8 @@ class WorkoutResultScreen extends StatelessWidget {
                 child: ElevatedButton(
                   onPressed: () => context.go('/dashboard'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.surface,
-                    side: BorderSide(color: AppColors.glassBorder),
+                    backgroundColor: context.surfaceColor,
+                    side: BorderSide(color: context.glassBorderColor),
                     padding: const EdgeInsets.symmetric(vertical: 20),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
@@ -208,12 +209,12 @@ class WorkoutResultScreen extends StatelessWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(LucideIcons.home, color: AppColors.textSecondary, size: 20),
+                      Icon(LucideIcons.home, color: context.secondaryTextColor, size: 20),
                       const SizedBox(width: 12),
-                      const Text(
+                      Text(
                         'Back to Dashboard',
                         style: TextStyle(
-                          color: AppColors.textSecondary,
+                          color: context.secondaryTextColor,
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
@@ -230,13 +231,13 @@ class WorkoutResultScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatGridItem(IconData icon, String title, String value, String unit, Color iconColor) {
+  Widget _buildStatGridItem(BuildContext context, IconData icon, String title, String value, String unit, Color iconColor) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.surfaceColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.glassBorder),
+        border: Border.all(color: context.glassBorderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -256,7 +257,7 @@ class WorkoutResultScreen extends StatelessWidget {
               Text(
                 title,
                 style: TextStyle(
-                  color: AppColors.textSecondary,
+                  color: context.secondaryTextColor,
                   fontSize: 13,
                 ),
               ),
@@ -265,8 +266,8 @@ class WorkoutResultScreen extends StatelessWidget {
           const Spacer(),
           Text(
             value,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: context.textColor,
               fontSize: 28,
               fontWeight: FontWeight.bold,
             ),
@@ -275,7 +276,7 @@ class WorkoutResultScreen extends StatelessWidget {
           Text(
             unit,
             style: TextStyle(
-              color: AppColors.textSecondary.withOpacity(0.5),
+              color: context.secondaryTextColor.withOpacity(0.5),
               fontSize: 12,
             ),
           ),
@@ -284,7 +285,7 @@ class WorkoutResultScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSuggestionItem(String title, String desc, IconData icon, Color color) {
+  Widget _buildSuggestionItem(BuildContext context, String title, String desc, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -309,8 +310,8 @@ class WorkoutResultScreen extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: context.textColor,
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
@@ -319,7 +320,7 @@ class WorkoutResultScreen extends StatelessWidget {
                 Text(
                   desc,
                   style: TextStyle(
-                    color: AppColors.textSecondary,
+                    color: context.secondaryTextColor,
                     fontSize: 13,
                   ),
                 ),

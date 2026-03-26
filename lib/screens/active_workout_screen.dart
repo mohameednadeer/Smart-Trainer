@@ -97,8 +97,12 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen>
       if (mounted) {
         ref.read(poseResultProvider.notifier).state = result;
       }
-    } catch (_) {
-      // Silently skip bad frames.
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = "AI Error: $e";
+        });
+      }
     } finally {
       _isProcessingFrame = false;
     }

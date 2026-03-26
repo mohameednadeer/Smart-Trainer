@@ -5,6 +5,7 @@ import 'package:smart_trainer/theme/app_colors.dart';
 import 'package:smart_trainer/widgets/glass_container.dart';
 import 'package:smart_trainer/widgets/neon_button.dart';
 import 'package:smart_trainer/widgets/custom_text_field.dart';
+import 'package:smart_trainer/theme/theme_ext.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -23,13 +24,13 @@ class _AuthScreenState extends State<AuthScreen> {
         children: [
         // Background pattern/color (Neon Grid could be an image or painter, simplified here)
           Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               gradient: RadialGradient(
-                center: Alignment(0, -0.5),
+                center: const Alignment(0, -0.5),
                 radius: 1.2,
                 colors: [
-                  Color.fromARGB(255, 10, 20, 36), // Subtler blue glow
-                  AppColors.background,
+                  const Color.fromARGB(255, 10, 20, 36), // Subtler blue glow
+                  context.bgColor,
                 ],
               ),
             ),
@@ -73,7 +74,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         Text.rich(
                           TextSpan(
                             children: [
-                              const TextSpan(text: 'Smart', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 32, color: Colors.white)),
+                              TextSpan(text: 'Smart', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 32, color: context.textColor)),
                               TextSpan(text: 'Trainer', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 32, color: AppColors.electricBlue)),
                             ],
                           ),
@@ -85,7 +86,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         Text(
                           'Your AI Fitness Coach',
                           style: TextStyle(
-                            color: AppColors.textSecondary,
+                            color: context.secondaryTextColor,
                             fontSize: 16,
                           ),
                         ),
@@ -129,7 +130,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                         'Login',
                                         style: TextStyle(
                                           fontWeight: FontWeight.bold,
-                                          color: isLogin ? Colors.white : AppColors.textSecondary,
+                                          color: isLogin ? Colors.white : context.secondaryTextColor,
                                         ),
                                       ),
                                     ),
@@ -158,7 +159,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                         'Sign Up',
                                         style: TextStyle(
                                           fontWeight: FontWeight.bold,
-                                          color: !isLogin ? Colors.white : AppColors.textSecondary,
+                                          color: !isLogin ? Colors.white : context.secondaryTextColor,
                                         ),
                                       ),
                                     ),
@@ -217,15 +218,15 @@ class _AuthScreenState extends State<AuthScreen> {
                         
                         Row(
                           children: [
-                            Expanded(child: Divider(color: AppColors.glassBorder)),
+                            Expanded(child: Divider(color: context.glassBorderColor)),
                             Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 16),
                               child: Text(
                                 'Or continue with',
-                                style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                                style: TextStyle(color: context.secondaryTextColor, fontSize: 14),
                               ),
                             ),
-                            Expanded(child: Divider(color: AppColors.glassBorder)),
+                            Expanded(child: Divider(color: context.glassBorderColor)),
                           ],
                         ),
                         const SizedBox(height: 24),
@@ -233,9 +234,9 @@ class _AuthScreenState extends State<AuthScreen> {
                         // Google Sign In Button (Mock)
                         Container(
                           decoration: BoxDecoration(
-                            color: AppColors.surface,
+                            color: context.surfaceColor,
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: AppColors.glassBorder),
+                            border: Border.all(color: context.glassBorderColor),
                           ),
                           child: InkWell(
                             onTap: () {},
@@ -251,10 +252,10 @@ class _AuthScreenState extends State<AuthScreen> {
                                     height: 24,
                                   ),
                                   const SizedBox(width: 12),
-                                  const Text(
+                                  Text(
                                     'Sign in with Google',
                                     style: TextStyle(
-                                      color: Colors.white,
+                                      color: context.textColor,
                                       fontSize: 16,
                                       fontWeight: FontWeight.w600,
                                     ),

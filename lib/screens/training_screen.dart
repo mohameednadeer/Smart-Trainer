@@ -6,6 +6,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:smart_trainer/core/ai/models/exercise_feedback.dart';
 import 'package:smart_trainer/core/providers.dart';
 import 'package:smart_trainer/theme/app_colors.dart';
+import 'package:smart_trainer/theme/theme_ext.dart';
 
 class TrainingScreen extends ConsumerStatefulWidget {
   const TrainingScreen({super.key});
@@ -34,10 +35,10 @@ class _TrainingScreenState extends ConsumerState<TrainingScreen> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            backgroundColor: AppColors.surface,
-            content: const Text(
+            backgroundColor: context.surfaceColor,
+            content: Text(
               'Camera permission is required for pose detection',
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(color: context.textColor),
             ),
             action: SnackBarAction(
               label: 'Settings',
@@ -56,24 +57,24 @@ class _TrainingScreenState extends ConsumerState<TrainingScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface,
+        backgroundColor: context.surfaceColor,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
           side: BorderSide(color: AppColors.electricBlue.withValues(alpha: 0.3)),
         ),
-        title: const Text(
+        title: Text(
           'Camera Access Required',
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: context.textColor),
         ),
-        content: const Text(
+        content: Text(
           'Smart Trainer needs camera access to analyze your exercise posture in real-time. Please enable it in your device settings.',
-          style: TextStyle(color: AppColors.textSecondary),
+          style: TextStyle(color: context.secondaryTextColor),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel',
-                style: TextStyle(color: AppColors.textSecondary)),
+            child: Text('Cancel',
+                style: TextStyle(color: context.secondaryTextColor)),
           ),
           TextButton(
             onPressed: () {
@@ -93,7 +94,7 @@ class _TrainingScreenState extends ConsumerState<TrainingScreen> {
     final selectedExercise = ref.watch(selectedExerciseProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.bgColor,
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -226,7 +227,7 @@ class _TrainingScreenState extends ConsumerState<TrainingScreen> {
                       Text(
                         'Camera activates when you start',
                         style: TextStyle(
-                          color: AppColors.textSecondary,
+                          color: context.secondaryTextColor,
                           fontSize: 16,
                         ),
                       ),
@@ -327,7 +328,7 @@ class _ExerciseToggle extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: AppColors.surface.withValues(alpha: 0.8),
+        color: context.surfaceColor.withValues(alpha: 0.8),
         borderRadius: BorderRadius.circular(32),
         border: Border.all(
           color: AppColors.electricBlue.withValues(alpha: 0.3),
@@ -338,11 +339,13 @@ class _ExerciseToggle extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           _buildOption(
+            context,
             ExerciseType.squat,
             'Squat',
             LucideIcons.activity,
           ),
           _buildOption(
+            context,
             ExerciseType.pushUp,
             'Push-up',
             LucideIcons.zap,
@@ -352,7 +355,7 @@ class _ExerciseToggle extends StatelessWidget {
     );
   }
 
-  Widget _buildOption(ExerciseType type, String label, IconData icon) {
+  Widget _buildOption(BuildContext context, ExerciseType type, String label, IconData icon) {
     final isSelected = selected == type;
 
     return GestureDetector(
@@ -380,7 +383,7 @@ class _ExerciseToggle extends StatelessWidget {
               icon,
               color: isSelected
                   ? AppColors.electricBlue
-                  : AppColors.textSecondary,
+                  : context.secondaryTextColor,
               size: 16,
             ),
             const SizedBox(width: 6),
@@ -389,7 +392,7 @@ class _ExerciseToggle extends StatelessWidget {
               style: TextStyle(
                 color: isSelected
                     ? AppColors.electricBlue
-                    : AppColors.textSecondary,
+                    : context.secondaryTextColor,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 fontSize: 13,
               ),

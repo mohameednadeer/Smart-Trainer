@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smart_trainer/theme/app_colors.dart';
-import 'package:smart_trainer/widgets/glass_container.dart';
+import 'package:smart_trainer/theme/theme_ext.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -10,7 +10,7 @@ class DashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.bgColor,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
@@ -19,13 +19,13 @@ class DashboardScreen extends StatelessWidget {
             children: [
               _buildHeader(context),
               const SizedBox(height: 32),
-              _buildStatCardsRow(),
+              _buildStatCardsRow(context),
               const SizedBox(height: 32),
               _buildStartWorkoutButton(context),
               const SizedBox(height: 32),
-              _buildTodaysSummary(),
+              _buildTodaysSummary(context),
               const SizedBox(height: 32),
-              _buildRecentWorkouts(),
+              _buildRecentWorkouts(context),
               const SizedBox(height: 24),
             ],
           ),
@@ -58,10 +58,10 @@ class DashboardScreen extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Ready to crush it? 💪',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: context.textColor,
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                 ),
@@ -74,13 +74,13 @@ class DashboardScreen extends StatelessWidget {
             InkWell(
               onTap: () => context.push('/profile'),
               borderRadius: BorderRadius.circular(24),
-              child: _buildIconButton(LucideIcons.user),
+              child: _buildIconButton(context, LucideIcons.user),
             ),
             const SizedBox(width: 12),
             InkWell(
               onTap: () => context.push('/settings'),
               borderRadius: BorderRadius.circular(24),
-              child: _buildIconButton(LucideIcons.settings),
+              child: _buildIconButton(context, LucideIcons.settings),
             ),
           ],
         )
@@ -88,23 +88,23 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildIconButton(IconData icon) {
+  Widget _buildIconButton(BuildContext context, IconData icon) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.surfaceColor,
         shape: BoxShape.circle,
-        border: Border.all(color: AppColors.glassBorder),
+        border: Border.all(color: context.glassBorderColor),
       ),
       padding: const EdgeInsets.all(12),
       child: Icon(icon, color: AppColors.electricBlue, size: 20),
     );
   }
 
-  Widget _buildStatCardsRow() {
+  Widget _buildStatCardsRow(BuildContext context) {
     return Row(
       children: [
         Expanded(
-          child: _buildStatCard(
+          child: _buildStatCard(context,
             icon: LucideIcons.heart,
             iconColor: AppColors.biometricRed,
             value: '72',
@@ -113,7 +113,7 @@ class DashboardScreen extends StatelessWidget {
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: _buildStatCard(
+          child: _buildStatCard(context,
             icon: LucideIcons.flame,
             iconColor: Colors.orangeAccent,
             value: '245',
@@ -122,7 +122,7 @@ class DashboardScreen extends StatelessWidget {
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: _buildStatCard(
+          child: _buildStatCard(context,
             icon: LucideIcons.target,
             iconColor: AppColors.electricBlue,
             value: '3/5',
@@ -133,7 +133,7 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatCard({
+  Widget _buildStatCard(BuildContext context, {
     required IconData icon,
     required Color iconColor,
     required String value,
@@ -142,9 +142,9 @@ class DashboardScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 20),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.surfaceColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.glassBorder),
+        border: Border.all(color: context.glassBorderColor),
       ),
       child: Column(
         children: [
@@ -152,8 +152,8 @@ class DashboardScreen extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             value,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: context.textColor,
               fontSize: 20,
               fontWeight: FontWeight.bold,
             ),
@@ -161,8 +161,8 @@ class DashboardScreen extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             label,
-            style: const TextStyle(
-              color: AppColors.textSecondary,
+            style: TextStyle(
+              color: context.secondaryTextColor,
               fontSize: 12,
             ),
           ),
@@ -210,7 +210,7 @@ class DashboardScreen extends StatelessWidget {
                 child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 24),
               ),
               const SizedBox(width: 12),
-              const Text(
+              Text(
                 'Start Workout',
                 style: TextStyle(
                   color: Colors.white,
@@ -219,7 +219,7 @@ class DashboardScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              const Icon(LucideIcons.zap, color: Colors.white, size: 20),
+              Icon(LucideIcons.zap, color: context.textColor, size: 20),
             ],
           ),
         ),
@@ -227,7 +227,7 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildTodaysSummary() {
+  Widget _buildTodaysSummary(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -235,10 +235,10 @@ class DashboardScreen extends StatelessWidget {
           children: [
             const Icon(LucideIcons.calendar, color: AppColors.electricBlue, size: 20),
             const SizedBox(width: 8),
-            const Text(
+            Text(
               "Today's Summary",
               style: TextStyle(
-                color: Colors.white,
+                color: context.textColor,
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
@@ -249,9 +249,9 @@ class DashboardScreen extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: context.surfaceColor,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.glassBorder),
+            border: Border.all(color: context.glassBorderColor),
           ),
           child: Column(
             children: [
@@ -270,16 +270,16 @@ class DashboardScreen extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Active Time', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                      Text('Active Time', style: TextStyle(color: context.secondaryTextColor, fontSize: 13)),
                       const SizedBox(height: 4),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          const Text('0', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                          Text('0', style: TextStyle(color: context.textColor, fontSize: 24, fontWeight: FontWeight.bold)),
                           const SizedBox(width: 4),
-                          const Padding(
-                            padding: EdgeInsets.only(bottom: 4),
-                            child: Text('min', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: Text('min', style: TextStyle(color: context.textColor, fontSize: 16, fontWeight: FontWeight.bold)),
                           ),
                         ],
                       ),
@@ -289,7 +289,7 @@ class DashboardScreen extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      const Text('Accuracy', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                      Text('Accuracy', style: TextStyle(color: context.secondaryTextColor, fontSize: 13)),
                       const SizedBox(height: 4),
                       Text(
                         '0%',
@@ -304,12 +304,12 @@ class DashboardScreen extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 20),
-              Divider(color: AppColors.glassBorder),
+              Divider(color: context.glassBorderColor),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 "No workouts today yet. Let's get started! 🚀",
                 style: TextStyle(
-                  color: AppColors.textSecondary,
+                  color: context.secondaryTextColor,
                   fontSize: 14,
                 ),
               ),
@@ -320,7 +320,7 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildRecentWorkouts() {
+  Widget _buildRecentWorkouts(BuildContext context) {
     return Column(
       children: [
         Row(
@@ -330,10 +330,10 @@ class DashboardScreen extends StatelessWidget {
               children: [
                 const Icon(LucideIcons.trendingUp, color: AppColors.neonGreen, size: 20),
                 const SizedBox(width: 8),
-                const Text(
+                Text(
                   "Recent Workouts",
                   style: TextStyle(
-                    color: Colors.white,
+                    color: context.textColor,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
@@ -342,27 +342,27 @@ class DashboardScreen extends StatelessWidget {
             ),
             TextButton(
               onPressed: () {},
-              child: const Text('View all', style: TextStyle(color: AppColors.electricBlue)),
+              child: Text('View all', style: TextStyle(color: AppColors.electricBlue)),
             ),
           ],
         ),
         const SizedBox(height: 12),
-        _buildWorkoutListItem('Squats', '2 days ago', '92%', '12 min'),
+        _buildWorkoutListItem(context, 'Squats', '2 days ago', '92%', '12 min'),
         const SizedBox(height: 12),
-        _buildWorkoutListItem('Push-ups', '3 days ago', '88%', '8 min'),
+        _buildWorkoutListItem(context, 'Push-ups', '3 days ago', '88%', '8 min'),
         const SizedBox(height: 12),
-        _buildWorkoutListItem('Lunges', '4 days ago', '95%', '15 min'),
+        _buildWorkoutListItem(context, 'Lunges', '4 days ago', '95%', '15 min'),
       ],
     );
   }
 
-  Widget _buildWorkoutListItem(String title, String subtitle, String accuracy, String duration) {
+  Widget _buildWorkoutListItem(BuildContext context, String title, String subtitle, String accuracy, String duration) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.surfaceColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.glassBorder),
+        border: Border.all(color: context.glassBorderColor),
       ),
       child: Row(
         children: [
@@ -381,8 +381,8 @@ class DashboardScreen extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: context.textColor,
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
@@ -390,8 +390,8 @@ class DashboardScreen extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   subtitle,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
+                  style: TextStyle(
+                    color: context.secondaryTextColor,
                     fontSize: 13,
                   ),
                 ),
@@ -410,7 +410,7 @@ class DashboardScreen extends StatelessWidget {
                 ),
                 child: Text(
                   accuracy,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.neonGreen,
                     fontWeight: FontWeight.bold,
                     fontSize: 12,
@@ -420,8 +420,8 @@ class DashboardScreen extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 duration,
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
+                style: TextStyle(
+                  color: context.secondaryTextColor,
                   fontSize: 12,
                 ),
               ),

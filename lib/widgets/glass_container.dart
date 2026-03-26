@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:smart_trainer/theme/app_colors.dart';
+import 'package:smart_trainer/theme/theme_ext.dart';
 
 class GlassContainer extends StatelessWidget {
   final Widget child;
@@ -31,10 +32,10 @@ class GlassContainer extends StatelessWidget {
           height: height,
           padding: padding,
           decoration: BoxDecoration(
-            color: AppColors.glassBackground, // Semi-transparent
+            color: context.glassBgColor, // Semi-transparent
             borderRadius: borderRadius,
             border: Border.all(
-              color: AppColors.glassBorder, // faint white border
+              color: context.glassBorderColor, // faint white border
               width: 1.0,
             ),
           ),

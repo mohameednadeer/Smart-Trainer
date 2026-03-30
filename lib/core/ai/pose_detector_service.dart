@@ -93,17 +93,18 @@ class PoseDetectorService {
           final int rotY = (y * scaleY).toInt().clamp(0, rotHeight - 1);
 
           final int srcX, srcY;
-
           if (lensDirection == CameraLensDirection.front) {
             // Front camera on Android: sensor orientation is usually 270°.
-            // To make it portrait, we rotate 270° clockwise.
-            srcX = rotY.clamp(0, srcWidth - 1);
-            srcY = (srcHeight - 1 - rotX).clamp(0, srcHeight - 1);
-          } else {
-            // Back camera on Android: sensor orientation is usually 90°.
-            // To make it portrait, we rotate 90° clockwise.
+            // Map portrait (rotX, rotY) to landscape (srcX, srcY) for 270° CW:
+            // srcX = srcWidth - 1 - rotY, srcY = rotX
             srcX = (srcWidth - 1 - rotY).clamp(0, srcWidth - 1);
             srcY = rotX.clamp(0, srcHeight - 1);
+          } else {
+            // Back camera on Android: sensor orientation is usually 90°.
+            // Map portrait (rotX, rotY) to landscape (srcX, srcY) for 90° CW:
+            // srcX = rotY, srcY = srcHeight - 1 - rotX
+            srcX = rotY.clamp(0, srcWidth - 1);
+            srcY = (srcHeight - 1 - rotX).clamp(0, srcHeight - 1);
           }
 
           final int yIndex = srcY * yRowStride + srcX;

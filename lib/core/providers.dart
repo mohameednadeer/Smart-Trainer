@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:pedometer/pedometer.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'step_counter_service.dart';
+
 
 import 'ai/exercise_evaluator.dart';
 import 'ai/models/exercise_feedback.dart';
@@ -137,8 +139,8 @@ class UserProfile {
 class UserProfileNotifier extends Notifier<UserProfile> {
   @override
   UserProfile build() => const UserProfile(
-        name: 'Alex Johnson',
-        email: 'alex.johnson@email.com',
+        name: 'Mohamed',
+        email: 'mohamed@email.com',
         joinDate: 'January 2026',
         age: 26,
         weight: 75.0,
@@ -170,43 +172,35 @@ final userProvider = NotifierProvider<UserProfileNotifier, UserProfile>(UserProf
 // ─────────────────── Step Counter ───────────────────
 
 class StepCounterNotifier extends Notifier<int> {
-  int _initialSteps = -1;
-  DateTime _lastResetDate = DateTime.now();
+  final _service = StepCounterService();
+  StreamSubscription<int>? _subscription;
 
   @override
   int build() {
-    _initPedometer();
+    ref.onDispose(() {
+      _subscription?.cancel();
+      _service.dispose();
+    });
+    _init();
     return 0;
   }
 
-  Future<void> _initPedometer() async {
+  Future<void> _init() async {
+    // Request permission for activity recognition (Android 10+)
     final status = await Permission.activityRecognition.request();
-    if (status.isGranted) {
-      _startListening();
-    } else {
-      state = 0;
+    if (!status.isGranted) {
+      debugPrint('Step Counter: Permission denied.');
+      return;
     }
-  }
 
-  void _startListening() {
-    Pedometer.stepCountStream.listen((event) {
-      final now = DateTime.now();
-      // Reset at midnight (new day)
-      if (now.day != _lastResetDate.day ||
-          now.month != _lastResetDate.month ||
-          now.year != _lastResetDate.year) {
-        _initialSteps = event.steps;
-        _lastResetDate = now;
-      }
+    await _service.initialize();
 
-      if (_initialSteps == -1) {
-        _initialSteps = event.steps;
-      }
+    // Emit persisted steps immediately on load
+    state = _service.currentSteps;
 
-      state = event.steps - _initialSteps;
-    }, onError: (_) {
-      // Pedometer not available on this device
-      state = 0;
+    // Subscribe to live updates
+    _subscription = _service.stepStream.listen((steps) {
+      state = steps;
     });
   }
 }

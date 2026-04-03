@@ -138,8 +138,13 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen>
     final weight = user.weight > 0 ? user.weight : 70.0;
     
     final type = ref.read(selectedExerciseProvider);
-    // MET values: Squat=5.0, PushUp=4.0, BicepCurl=3.0 (approximate)
-    final met = type == ExerciseType.squat ? 5.0 : (type == ExerciseType.pushUp ? 4.0 : 3.0);
+    // MET values: Squat=5.0, PushUp=4.0, BicepCurl=3.0, TricepExtension=3.0 (approximate)
+    final met = switch (type) {
+      ExerciseType.squat => 5.0,
+      ExerciseType.pushUp => 4.0,
+      ExerciseType.bicepCurl => 3.0,
+      ExerciseType.tricepExtension => 3.0,
+    };
     
     // calories = (duration_hours) * MET * weight_kg
     final calories = (duration.inSeconds / 3600.0) * met * weight;
@@ -388,6 +393,7 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen>
                             ExerciseType.squat => 'Squat Exercise',
                             ExerciseType.pushUp => 'Push-up Exercise',
                             ExerciseType.bicepCurl => 'Bicep Curl Exercise',
+                            ExerciseType.tricepExtension => 'Tricep Extension',
                           };
                           return Container(
                             padding: const EdgeInsets.symmetric(

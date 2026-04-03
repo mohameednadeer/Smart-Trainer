@@ -4,14 +4,14 @@ import 'package:lucide_icons/lucide_icons.dart';
 
 class NeonButton extends StatelessWidget {
   final String text;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
   final IconData? icon;
   final bool isLoading;
 
   const NeonButton({
     super.key,
     required this.text,
-    required this.onPressed,
+    this.onPressed,
     this.icon,
     this.isLoading = false,
   });

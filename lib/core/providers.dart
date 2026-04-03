@@ -2,6 +2,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:firebase_auth/firebase_auth.dart' as auth;
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:smart_trainer/services/auth_service.dart';
+import 'package:smart_trainer/services/workout_service.dart';
 import 'step_counter_service.dart';
 
 
@@ -83,6 +87,7 @@ final themeProvider = NotifierProvider<ThemeModeNotifier, ThemeMode>(ThemeModeNo
 class UserProfile {
   final String name;
   final String email;
+  final String phone;
   final String joinDate;
   final int age;
   final double weight; // kg
@@ -92,12 +97,14 @@ class UserProfile {
   const UserProfile({
     required this.name,
     required this.email,
+    required this.phone,
     required this.joinDate,
     required this.age,
     required this.weight,
     required this.height,
     required this.gender,
   });
+
 
   /// Calculates Daily Caloric Needs (TDEE) based on the Mifflin-St Jeor equation.
   /// Assuming a 'Lightly Active' multiplier of 1.375 for standard users of this fitness app.
@@ -118,6 +125,7 @@ class UserProfile {
   UserProfile copyWith({
     String? name,
     String? email,
+    String? phone,
     String? joinDate,
     int? age,
     double? weight,
@@ -127,6 +135,7 @@ class UserProfile {
     return UserProfile(
       name: name ?? this.name,
       email: email ?? this.email,
+      phone: phone ?? this.phone,
       joinDate: joinDate ?? this.joinDate,
       age: age ?? this.age,
       weight: weight ?? this.weight,
@@ -137,20 +146,49 @@ class UserProfile {
 }
 
 class UserProfileNotifier extends Notifier<UserProfile> {
+  final _authService = AuthService();
+
   @override
-  UserProfile build() => const UserProfile(
-        name: 'Mohamed',
-        email: 'mohamed@email.com',
-        joinDate: 'January 2026',
-        age: 26,
-        weight: 75.0,
-        height: 180.0,
-        gender: 'male',
+  UserProfile build() {
+    // مراقبة حالة المصادقة
+    auth.FirebaseAuth.instance.authStateChanges().listen((user) {
+      if (user != null) {
+        _loadUserData(user.uid);
+      }
+    });
+
+    return const UserProfile(
+      name: 'Loading...',
+      email: '',
+      phone: '',
+      joinDate: '',
+      age: 0,
+      weight: 0,
+      height: 0,
+      gender: 'male',
+    );
+  }
+
+  Future<void> _loadUserData(String uid) async {
+    final data = await _authService.getUserData(uid);
+    if (data != null) {
+      state = UserProfile(
+        name: data['name'] ?? 'User',
+        email: data['email'] ?? '',
+        phone: data['phone'] ?? '',
+        joinDate: 'Since 2026',
+        age: data['age'] ?? 25,
+        weight: (data['weight'] as num?)?.toDouble() ?? 70.0,
+        height: (data['height'] as num?)?.toDouble() ?? 170.0,
+        gender: data['gender'] ?? 'male',
       );
+    }
+  }
 
   void updateProfile({
     String? name,
     String? email,
+    String? phone,
     int? age,
     double? weight,
     double? height,
@@ -159,6 +197,7 @@ class UserProfileNotifier extends Notifier<UserProfile> {
     state = state.copyWith(
       name: name,
       email: email,
+      phone: phone,
       age: age,
       weight: weight,
       height: height,
@@ -166,6 +205,7 @@ class UserProfileNotifier extends Notifier<UserProfile> {
     );
   }
 }
+
 
 final userProvider = NotifierProvider<UserProfileNotifier, UserProfile>(UserProfileNotifier.new);
 
@@ -228,31 +268,33 @@ class WorkoutSessionStats {
 }
 
 class WorkoutHistoryNotifier extends Notifier<List<WorkoutSessionStats>> {
+  final _workoutService = WorkoutService();
+  StreamSubscription<List<WorkoutSessionStats>>? _subscription;
+
   @override
   List<WorkoutSessionStats> build() {
-    return [
-      WorkoutSessionStats(
-        exerciseType: ExerciseType.squat,
-        duration: const Duration(minutes: 12),
-        calories: 85,
-        reps: 45,
-        accuracy: 92,
-        date: DateTime.now().subtract(const Duration(days: 2)),
-      ),
-      WorkoutSessionStats(
-        exerciseType: ExerciseType.pushUp,
-        duration: const Duration(minutes: 8),
-        calories: 60,
-        reps: 30,
-        accuracy: 88,
-        date: DateTime.now().subtract(const Duration(days: 3)),
-      ),
-    ];
+    // مراقبة سجل التمارين في Firestore
+    _subscription?.cancel();
+    _subscription = _workoutService.getWorkoutHistory().listen((sessions) {
+      state = sessions;
+    });
+
+    ref.onDispose(() {
+      _subscription?.cancel();
+    });
+
+    return []; // حالة مبدئية فارغة
   }
 
-  void addSession(WorkoutSessionStats session) {
-    state = [...state, session];
+  Future<void> addSession(WorkoutSessionStats session) async {
+    // حفظ الجلسة في فايربيز (ستقوم الـ Build بتحديث القائمة تلقائياً بسبب الـ Stream)
+    try {
+      await _workoutService.saveWorkoutSession(session);
+    } catch (e) {
+      debugPrint("Error adding session to state/firestore: $e");
+    }
   }
 }
+
 
 final workoutHistoryProvider = NotifierProvider<WorkoutHistoryNotifier, List<WorkoutSessionStats>>(WorkoutHistoryNotifier.new);

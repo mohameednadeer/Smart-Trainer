@@ -1,5 +1,6 @@
 import 'angle_calculator.dart';
 import 'models/exercise_feedback.dart';
+import 'models/pose_landmark.dart';
 import 'models/pose_result.dart';
 
 /// Evaluates exercise form by analyzing joint angles from MoveNet keypoints.
@@ -41,6 +42,8 @@ class ExerciseEvaluator {
         return _evaluatePushUp(poseResult);
       case ExerciseType.bicepCurl:
         return _evaluateBicepCurl(poseResult);
+      case ExerciseType.tricepExtension:
+        return _evaluateTricepExtension(poseResult);
     }
   }
 
@@ -216,31 +219,31 @@ class ExerciseEvaluator {
   ExerciseFeedback _evaluateBicepCurl(PoseResult pose) {
     final angles = <String, double>{};
 
-    // Elbow angle (shoulder → elbow → wrist) — primary joint for curls
+    // Elbow angle (shoulder → elbow → wrist)
     final leftElbowAngle = AngleCalculator.calculateAngle(
       pose.leftShoulder, pose.leftElbow, pose.leftWrist,
     );
     final rightElbowAngle = AngleCalculator.calculateAngle(
       pose.rightShoulder, pose.rightElbow, pose.rightWrist,
     );
-
-    // Shoulder angle (hip → shoulder → elbow) — detects swinging / cheating
-    final leftShoulderAngle = AngleCalculator.calculateAngle(
+    // Shoulder swing (hip → shoulder → elbow) — detects cheating
+    final leftSwingAngle = AngleCalculator.calculateAngle(
       pose.leftHip, pose.leftShoulder, pose.leftElbow,
     );
-    final rightShoulderAngle = AngleCalculator.calculateAngle(
+    final rightSwingAngle = AngleCalculator.calculateAngle(
       pose.rightHip, pose.rightShoulder, pose.rightElbow,
     );
 
     if (leftElbowAngle != null) angles['leftElbow'] = leftElbowAngle;
     if (rightElbowAngle != null) angles['rightElbow'] = rightElbowAngle;
-    if (leftShoulderAngle != null) angles['leftShoulder'] = leftShoulderAngle;
-    if (rightShoulderAngle != null) angles['rightShoulder'] = rightShoulderAngle;
+    if (leftSwingAngle != null) angles['leftShoulder'] = leftSwingAngle;
+    if (rightSwingAngle != null) angles['rightShoulder'] = rightSwingAngle;
 
-    if (angles.isEmpty) {
+    // Need at least one elbow angle to proceed
+    if (leftElbowAngle == null && rightElbowAngle == null) {
       return ExerciseFeedback(
         isCorrect: false,
-        message: 'Arms not fully visible — step back',
+        message: 'Arms not visible — face the camera or turn to the side',
         jointAngles: angles,
         repCount: _repCount,
         phase: _currentPhase,
@@ -248,18 +251,147 @@ class ExerciseEvaluator {
       );
     }
 
-    final avgElbowAngle = _average(leftElbowAngle, rightElbowAngle);
-    final avgShoulderAngle = _average(leftShoulderAngle, rightShoulderAngle);
+    // ── Active angle: use the MOST CURLED arm (lowest angle). ──
+    // This lets ANY single arm trigger a rep — works for:
+    //   • front view one arm  • front view both arms  • side view
+    // No need to detect which view we're in at all.
+    final double activeAngle;
+    if (leftElbowAngle != null && rightElbowAngle != null) {
+      // both visible → whichever arm is more curled leads
+      activeAngle = leftElbowAngle < rightElbowAngle
+          ? leftElbowAngle
+          : rightElbowAngle;
+    } else {
+      // only one arm visible → use it directly
+      activeAngle = (leftElbowAngle ?? rightElbowAngle)!;
+    }
 
     // ── Phase detection & rep counting ──
-    // Extended (down): elbow > 150°
-    // Curled (top):    elbow < 50°
-    if (avgElbowAngle != null) {
-      if (avgElbowAngle > 150 && _currentPhase != 'down') {
-        if (_currentPhase == 'up') _repCount++;
-        _currentPhase = 'down';
-      } else if (avgElbowAngle < 50) {
+    // Extended (bottom): angle > 150° — arm nearly straight
+    // Curled   (top):    angle < 50°  — a proper deep curl, not just a slight raise
+    if (activeAngle > 150 && _currentPhase != 'down') {
+      if (_currentPhase == 'up') _repCount++;
+      _currentPhase = 'down';
+    } else if (activeAngle < 50) {
+      _currentPhase = 'up';
+    }
+
+    // ── Form evaluation ──
+    final swingAngle = leftSwingAngle ?? rightSwingAngle;
+    final bothVisible =
+        leftElbowAngle != null && rightElbowAngle != null;
+
+    String message;
+    bool isCorrect = true;
+
+    if (swingAngle != null && swingAngle > 45) {
+      message = 'Keep elbow pinned — don\'t swing';
+      isCorrect = false;
+    } else if (_currentPhase == 'up') {
+      message = bothVisible
+          ? 'Good curl — lower both arms slowly!'
+          : 'Good squeeze — lower slowly!';
+    } else if (_currentPhase == 'down') {
+      message = bothVisible
+          ? 'Arms extended — curl up!'
+          : 'Arm extended — curl up!';
+    } else {
+      message = 'Keep curling…';
+    }
+
+    _totalFrames++;
+    if (isCorrect && _currentPhase != 'idle') _correctFrames++;
+
+    return ExerciseFeedback(
+      isCorrect: isCorrect,
+      message: message,
+      jointAngles: angles,
+      repCount: _repCount,
+      phase: _currentPhase,
+      accuracyScore: accuracyScore,
+    );
+  }
+
+  // ─────────────────────── TRICEP EXTENSION ───────────────────────
+
+
+  // ─────────────────────── TRICEP EXTENSION ───────────────────────
+
+  ExerciseFeedback _evaluateTricepExtension(PoseResult pose) {
+    final angles = <String, double>{};
+
+    // ── Compute angles for each side independently ──
+    // Elbow angle (shoulder → elbow → wrist) — primary joint for the extension
+    final leftElbowAngle = AngleCalculator.calculateAngle(
+      pose.leftShoulder, pose.leftElbow, pose.leftWrist,
+    );
+    final rightElbowAngle = AngleCalculator.calculateAngle(
+      pose.rightShoulder, pose.rightElbow, pose.rightWrist,
+    );
+
+    // Upper-arm angle (hip → shoulder → elbow) — detects if the upper arm
+    // stays locked overhead or drifts forward/back
+    final leftUpperArmAngle = AngleCalculator.calculateAngle(
+      pose.leftHip, pose.leftShoulder, pose.leftElbow,
+    );
+    final rightUpperArmAngle = AngleCalculator.calculateAngle(
+      pose.rightHip, pose.rightShoulder, pose.rightElbow,
+    );
+
+    if (leftElbowAngle != null) angles['leftElbow'] = leftElbowAngle;
+    if (rightElbowAngle != null) angles['rightElbow'] = rightElbowAngle;
+    if (leftUpperArmAngle != null) angles['leftUpperArm'] = leftUpperArmAngle;
+    if (rightUpperArmAngle != null) angles['rightUpperArm'] = rightUpperArmAngle;
+
+    if (angles.isEmpty) {
+      return ExerciseFeedback(
+        isCorrect: false,
+        message: 'Arm not visible — face the camera or turn to the side',
+        jointAngles: angles,
+        repCount: _repCount,
+        phase: _currentPhase,
+        accuracyScore: accuracyScore,
+      );
+    }
+
+    // ── Pick the best visible side ──
+    // Priority: prefer the side where BOTH elbow AND upper-arm angles are
+    // available (gives us full form checking). Fall back to elbow-only if
+    // the camera is at an angle where the hip landmark is occluded.
+    double? workingElbowAngle;
+    double? workingUpperArmAngle;
+
+    final leftFullyVisible =
+        leftElbowAngle != null && leftUpperArmAngle != null;
+    final rightFullyVisible =
+        rightElbowAngle != null && rightUpperArmAngle != null;
+
+    if (leftFullyVisible && rightFullyVisible) {
+      // Front view — average both sides for a stable reading
+      workingElbowAngle = (leftElbowAngle! + rightElbowAngle!) / 2;
+      workingUpperArmAngle = (leftUpperArmAngle! + rightUpperArmAngle!) / 2;
+    } else if (leftFullyVisible) {
+      // Left-side or left-arm view
+      workingElbowAngle = leftElbowAngle;
+      workingUpperArmAngle = leftUpperArmAngle;
+    } else if (rightFullyVisible) {
+      // Right-side or right-arm view
+      workingElbowAngle = rightElbowAngle;
+      workingUpperArmAngle = rightUpperArmAngle;
+    } else {
+      // Only elbow is visible (extreme angle) — still count reps, skip form check
+      workingElbowAngle = leftElbowAngle ?? rightElbowAngle;
+    }
+
+    // ── Phase detection & rep counting ──
+    // Extended (lockout):   elbow > 155° — arm fully straight
+    // Contracted (loaded):  elbow < 80°  — arm bent behind head
+    if (workingElbowAngle != null) {
+      if (workingElbowAngle > 155 && _currentPhase != 'up') {
+        if (_currentPhase == 'down') _repCount++;
         _currentPhase = 'up';
+      } else if (workingElbowAngle < 80) {
+        _currentPhase = 'down';
       }
     }
 
@@ -267,17 +399,19 @@ class ExerciseEvaluator {
     String message;
     bool isCorrect = true;
 
-    if (avgShoulderAngle != null && avgShoulderAngle > 45) {
-      message = 'Keep elbows pinned — don\'t swing';
+    if (workingUpperArmAngle != null && workingUpperArmAngle < 130) {
+      // Upper arm has moved away from vertical — elbow is flaring
+      message = 'Keep upper arm still — don\'t let elbow drift';
       isCorrect = false;
-    } else if (_currentPhase == 'up' &&
-        avgElbowAngle != null &&
-        avgElbowAngle < 50) {
-      message = 'Good squeeze — lower slowly!';
+    } else if (workingElbowAngle != null && workingElbowAngle < 55) {
+      message = 'Too far down — control the descent';
+      isCorrect = false;
+    } else if (_currentPhase == 'up') {
+      message = 'Full lockout — bend arms back down';
     } else if (_currentPhase == 'down') {
-      message = 'Arms extended — curl up!';
+      message = 'Arms loaded — press up and extend!';
     } else {
-      message = 'Keep curling…';
+      message = 'Position arm overhead and start extending…';
     }
 
     _totalFrames++;

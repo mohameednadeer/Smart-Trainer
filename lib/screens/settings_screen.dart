@@ -4,6 +4,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smart_trainer/theme/app_colors.dart';
 import 'package:smart_trainer/core/providers.dart';
+import 'package:smart_trainer/services/auth_service.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -398,7 +399,35 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Widget _buildSignOutButton(BuildContext context) {
     return InkWell(
-      onTap: () => context.go('/auth'),
+      onTap: () async {
+        final shouldLogout = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: AppColors.surface,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Text('Sign Out?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            content: const Text('Are you sure you want to sign out of your account?', style: TextStyle(color: Colors.white70)),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel', style: TextStyle(color: AppColors.electricBlue)),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.biometricRed,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text('Sign Out', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        );
+
+        if (shouldLogout == true) {
+          await AuthService().signOut();
+        }
+      },
       borderRadius: BorderRadius.circular(16),
       child: Container(
         width: double.infinity,

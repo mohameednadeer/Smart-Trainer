@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "755750949021",
+    "project_id": "smart-trainer-88f05",
+    "storage_bucket": "smart-trainer-88f05.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:755750949021:android:ae6e343891cbf774da4474",
+        "android_client_info": {
+          "package_name": "com.example.smart_trainer"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAIoDbxk12EznKxTSuoeEU32SZO94a3rE8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -426,7 +426,12 @@ class DashboardScreen extends ConsumerWidget {
           const Text('No recent workouts', style: TextStyle(color: Colors.white70))
         else
           ...history.reversed.take(3).map((session) {
-            final title = session.exerciseType == ExerciseType.squat ? 'Squats' : (session.exerciseType == ExerciseType.pushUp ? 'Push-ups' : 'Bicep Curls');
+            final title = switch (session.exerciseType) {
+              ExerciseType.squat => 'Squats',
+              ExerciseType.pushUp => 'Push-ups',
+              ExerciseType.bicepCurl => 'Bicep Curls',
+              ExerciseType.tricepExtension => 'Tricep Extension',
+            };
             final difference = DateTime.now().difference(session.date);
             String subtitle;
             if (difference.inDays > 0) {

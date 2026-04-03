@@ -358,6 +358,12 @@ class _ExerciseToggle extends StatelessWidget {
               'Bicep Curl',
               LucideIcons.dumbbell,
             ),
+            _buildOption(
+              context,
+              ExerciseType.tricepExtension,
+              'Triceps',
+              LucideIcons.arrowUpWideNarrow,
+            ),
           ],
         ),
       ),

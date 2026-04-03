@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import 'package:smart_trainer/core/providers.dart';
+import 'package:smart_trainer/services/auth_service.dart';
 import 'package:smart_trainer/theme/app_colors.dart';
 import 'package:smart_trainer/theme/theme_ext.dart';
 import 'package:smart_trainer/widgets/custom_text_field.dart';
@@ -18,10 +19,13 @@ class EditProfileScreen extends ConsumerStatefulWidget {
 class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   late TextEditingController _nameController;
   late TextEditingController _emailController;
+  late TextEditingController _phoneController;
   late TextEditingController _ageController;
   late TextEditingController _weightController;
   late TextEditingController _heightController;
   late String _gender;
+  bool _isSaving = false;
+  final _authService = AuthService();
 
   @override
   void initState() {
@@ -29,6 +33,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     final user = ref.read(userProvider);
     _nameController = TextEditingController(text: user.name);
     _emailController = TextEditingController(text: user.email);
+    _phoneController = TextEditingController(text: user.phone);
     _ageController = TextEditingController(text: user.age.toString());
     _weightController = TextEditingController(text: user.weight.toString());
     _heightController = TextEditingController(text: user.height.toString());
@@ -39,22 +44,51 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
+    _phoneController.dispose();
     _ageController.dispose();
     _weightController.dispose();
     _heightController.dispose();
     super.dispose();
   }
 
-  void _saveProfile() {
-    ref.read(userProvider.notifier).updateProfile(
-      name: _nameController.text.trim(),
-      email: _emailController.text.trim(),
-      age: int.tryParse(_ageController.text.trim()) ?? 25,
-      weight: double.tryParse(_weightController.text.trim()) ?? 70.0,
-      height: double.tryParse(_heightController.text.trim()) ?? 170.0,
-      gender: _gender,
-    );
-    context.pop();
+  Future<void> _saveProfile() async {
+    setState(() => _isSaving = true);
+    
+    try {
+      final updatedData = {
+        'name': _nameController.text.trim(),
+        'email': _emailController.text.trim(),
+        'phone': _phoneController.text.trim(),
+        'age': int.tryParse(_ageController.text.trim()) ?? 25,
+        'weight': double.tryParse(_weightController.text.trim()) ?? 70.0,
+        'height': double.tryParse(_heightController.text.trim()) ?? 170.0,
+        'gender': _gender,
+      };
+
+      // 1. تحديث Firestore
+      await _authService.updateUserData(updatedData);
+
+      // 2. تحديث Local State
+      ref.read(userProvider.notifier).updateProfile(
+        name: updatedData['name'] as String,
+        email: updatedData['email'] as String,
+        phone: updatedData['phone'] as String,
+        age: updatedData['age'] as int,
+        weight: updatedData['weight'] as double,
+        height: updatedData['height'] as double,
+        gender: updatedData['gender'] as String,
+      );
+
+      if (mounted) context.pop();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error updating profile: $e")),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
   }
 
   @override
@@ -125,6 +159,14 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 keyboardType: TextInputType.emailAddress,
               ),
               const SizedBox(height: 24),
+              CustomTextField(
+                label: 'PHONE NUMBER',
+                hint: 'Enter your phone number',
+                prefixIcon: LucideIcons.phone,
+                controller: _phoneController,
+                keyboardType: TextInputType.phone,
+              ),
+              const SizedBox(height: 24),
               Row(
                 children: [
                   Expanded(
@@ -186,9 +228,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
               // Save Button
               NeonButton(
-                text: 'Save Changes',
-                icon: LucideIcons.check,
-                onPressed: _saveProfile,
+                text: _isSaving ? 'Saving...' : 'Save Changes',
+                icon: _isSaving ? Icons.hourglass_empty : LucideIcons.check,
+                onPressed: _isSaving ? null : () => _saveProfile(),
               ),
             ],
           ),

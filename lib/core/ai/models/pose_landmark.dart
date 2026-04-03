@@ -37,7 +37,9 @@ class PoseLandmark {
   });
 
   /// A keypoint is considered reliably detected above this threshold.
-  static const double confidenceThreshold = 0.3;
+  /// 0.2 is intentionally lenient to handle side-view poses where MoveNet
+  /// assigns lower confidence scores to landmarks it can still locate.
+  static const double confidenceThreshold = 0.2;
 
   bool get isVisible => confidence >= confidenceThreshold;
 

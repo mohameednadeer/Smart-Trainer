@@ -1,3 +1,5 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smart_trainer/screens/auth_screen.dart';
 import 'package:smart_trainer/screens/training_screen.dart';
@@ -13,6 +15,19 @@ import 'package:smart_trainer/screens/help_support_screen.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/auth',
+  refreshListenable: AuthListenable(),
+  redirect: (context, state) {
+    final user = FirebaseAuth.instance.currentUser;
+    final bool loggingIn = state.matchedLocation == '/auth';
+
+    if (user != null) {
+      if (loggingIn) return '/dashboard';
+    } else {
+      if (!loggingIn) return '/auth';
+    }
+    
+    return null;
+  },
   routes: [
     GoRoute(
       path: '/auth',
@@ -60,3 +75,13 @@ final appRouter = GoRouter(
     ),
   ],
 );
+
+class AuthListenable extends ChangeNotifier {
+  AuthListenable() {
+    FirebaseAuth.instance.authStateChanges().listen((user) {
+      notifyListeners();
+    });
+  }
+}
+
+
